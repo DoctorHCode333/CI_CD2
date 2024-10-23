@@ -166,7 +166,7 @@ inboundCall:
                                         processingPrompt:
                                           noValue: true
                                         category:
-                                          Genesys Cloud Data Actions -asr:
+                                          PureCloud_Data_Actions -asr:
                                             dataAction:
                                               waitTime:
                                                 inputs:
@@ -212,7 +212,7 @@ inboundCall:
                                           lit:
                                             minutes: 1
                                         category:
-                                          Genesys Cloud Data Actions -asr:
+                                          PureCloud_Data_Actions -asr:
                                             dataAction:
                                               waitTime:
                                                 inputs:
@@ -258,7 +258,7 @@ inboundCall:
                                           lit:
                                             minutes: 1
                                         category:
-                                          Genesys Cloud Data Actions -asr:
+                                          PureCloud_Data_Actions -asr:
                                             dataAction:
                                               waitTime:
                                                 inputs:
