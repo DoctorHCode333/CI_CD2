@@ -166,7 +166,7 @@ inboundCall:
                                         processingPrompt:
                                           noValue: true
                                         category:
-                                          PureCloud_Data_Actions -asr:
+                                          PureCloud_Data_Actions:
                                             dataAction:
                                               waitTime:
                                                 inputs:
@@ -212,7 +212,7 @@ inboundCall:
                                           lit:
                                             minutes: 1
                                         category:
-                                          PureCloud_Data_Actions -asr:
+                                          PureCloud_Data_Actions:
                                             dataAction:
                                               waitTime:
                                                 inputs:
@@ -258,7 +258,7 @@ inboundCall:
                                           lit:
                                             minutes: 1
                                         category:
-                                          PureCloud_Data_Actions -asr:
+                                          PureCloud_Data_Actions:
                                             dataAction:
                                               waitTime:
                                                 inputs:
