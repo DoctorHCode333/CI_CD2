@@ -40,9 +40,9 @@ jobs:
       GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_DEV }}
       GENESYSCLOUD_API_REGION: "https://api.usw2.pure.cloud"
       GENESYSCLOUD_REGION: "us-west-2"
-      GENESYSCLOUD_ARCHY_REGION: "mypurecloud.com"
+      GENESYSCLOUD_ARCHY_REGION: "usw2.pure.cloud"
       GENESYSCLOUD_EMAIL_DOMAIN: "devengagedev"
-      GENESYSCLOUD_EMAIL_DOMAIN_REGION: "pure.cloud"
+      GENESYSCLOUD_EMAIL_DOMAIN_REGION: "usw2.pure.cloud"
       TF_WORKSPACE: "2"
     steps:
       - uses: actions/checkout@v2
