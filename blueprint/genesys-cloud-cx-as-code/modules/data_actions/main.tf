@@ -20,7 +20,7 @@ resource "genesyscloud_integration" "PureCloud_Data_Actions" {
 
 # Define the data action for estimated wait time
 resource "genesyscloud_integration_action" "waitTime" {
-  name           = "Get Estimated Wait Time"
+  name           = "waitTime"
   category       = "PureCloud_Data_Actions"
   integration_id = genesyscloud_integration.PureCloud_Data_Actions.id
   secure         = false
@@ -56,7 +56,7 @@ resource "genesyscloud_integration_action" "waitTime" {
 
   # Configure the request
   config_request {
-    request_url_template = "/api/v2/routing/queues/{input.QUEUE_ID}/mediatypes/$${input.MEDIA_TYPE}/estimatedwaittime"
+    request_url_template = "/api/v2/routing/queues/$${input.QUEUE_ID}/mediatypes/$${input.MEDIA_TYPE}/estimatedwaittime"
     request_type         = "GET"
     request_template     = "$${input.rawRequest}"
     headers = {
