@@ -8,24 +8,6 @@ terraform {
   }
 }
 
-resource "genesyscloud_tf_export" "queue_export" {
-  directory               = "${path.root}/modules/exported_queues"
-  export_format           = "hcl"
-  log_permission_errors   = true
-  include_state_file      = false
-  enable_dependency_resolution = false
-  include_filter_resources = [
-    "genesyscloud_routing_queue::^Customer Support$",
-    "genesyscloud_routing_queue::^CUSTOMER SERVICE$",
-    "genesyscloud_routing_queue::^RK$"
-  ]
-}
-
-# This trigger forces the export to run on every apply by destroying/recreating the export resource
-resource "terraform_data" "export_timestamp" {
-  input = timestamp()
-}
-
 resource "genesyscloud_routing_queue" "Queues" {
   for_each                 = toset(var.classifier_queue_names)
   name                     = each.value

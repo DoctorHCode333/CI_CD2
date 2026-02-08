@@ -15,7 +15,6 @@ runs:
     - run: |
         cd $GITHUB_WORKSPACE/blueprint/genesys-cloud-cx-as-code
         terraform init 
-        terraform destroy -target=module.classifier_queues.genesyscloud_tf_export.queue_export -auto-approve || echo "No export resource to destroy"
         terraform apply --auto-approve
         cd $GITHUB_WORKSPACE
       shell: bash
