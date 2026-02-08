@@ -20,17 +20,17 @@ provider "genesyscloud" {
 }
 
 
-module "classifier_queues" {
-  source                   = "git::https://github.com/GenesysCloudDevOps/genesys-cloud-queues-demo.git?ref=main"
-  classifier_queue_names   = ["401K", "IRA", "529", "GeneralSupport", "PremiumSupport"]
-  // classifier_queue_members = module.classifier_users.user_ids
-}
-
 # module "classifier_queues" {
-#   source                   = "./modules/queues"
-#   classifier_queue_names   = ["401K", "IRA", "ROTH", "529", "GeneralSupport", "PremiumSupport", "PremiumSupport2"]
-#   //classifier_queue_members = module.classifier_users.user_ids
+#   source                   = "git::https://github.com/GenesysCloudDevOps/genesys-cloud-queues-demo.git?ref=main"
+#   classifier_queue_names   = ["401K", "IRA", "529", "GeneralSupport", "PremiumSupport"]
+#   // classifier_queue_members = module.classifier_users.user_ids
 # }
+
+module "classifier_queues" {
+  source                   = "./modules/queues"
+  classifier_queue_names   = ["401K", "IRA", "ROTH", "529", "GeneralSupport", "PremiumSupport", "PremiumSupport2"]
+  //classifier_queue_members = module.classifier_users.user_ids
+}
 
 # module "classifier_email_routes" {
 #   source               = "./modules/email_routes"
