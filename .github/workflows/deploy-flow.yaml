@@ -51,6 +51,14 @@ jobs:
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
       - uses: ./.github/actions/genesys-cloud-apply-terraform
+      - name: Commit exported queue files
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add blueprint/genesys-cloud-cx-as-code/modules/exported_queues/*.tf
+          git diff --staged --quiet || git commit -m "Auto-export: Customer Support queue configuration"
+          git push
+        shell: bash
       - uses: ./.github/actions/genesys-cloud-publish-archy-flow
         with:
           architect-flow-path: $GITHUB_WORKSPACE/blueprint/genesys-cloud-architect-flows/myTestFlow.yaml
