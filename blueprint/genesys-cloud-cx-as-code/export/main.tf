@@ -11,7 +11,7 @@ provider "genesyscloud" {
   sdk_debug = true
 }
 
-resource "genesyscloud_tf_export" "bfsi_poc_flow_export" {
+resource "genesyscloud_tf_export" "ci_cd_test_flow_export" {
   directory                          = "./exported_resources"
   export_format                      = "hcl"
   log_permission_errors              = true
@@ -19,6 +19,6 @@ resource "genesyscloud_tf_export" "bfsi_poc_flow_export" {
   enable_dependency_resolution       = true  # Automatically export all dependencies
   use_legacy_architect_flow_exporter = false # Export flows in YAML format
   include_filter_resources = [
-    "genesyscloud_flow::BFSI_POC"  # Export BFSI_POC flow and its dependencies
+    "genesyscloud_flow::CI_CD_Test_Flow"  # Export CI_CD_Test_Flow flow and its dependencies
   ]
 }
