@@ -2,8 +2,8 @@
 # This action runs the Genesys Cloud export locally (not via Terraform Cloud)
 # so the exported files are available in the GitHub Actions workspace
 ###
-name: "Export Genesys Cloud Queues"
-description: "Export Genesys Cloud queue configurations to .tf files"
+name: "Export Genesys Cloud Resources"
+description: "Export Genesys Cloud flows and dependencies to .tf/.yaml files"
 runs:
   using: "composite"
   steps:

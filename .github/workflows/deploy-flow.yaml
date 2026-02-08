@@ -54,33 +54,23 @@ jobs:
       - uses: ./.github/actions/genesys-cloud-export-queues
       - name: Debug and verify export
         run: |
-          cd blueprint/genesys-cloud-cx-as-code
-          echo "=== Current working directory ==="
-          pwd
+          cd blueprint/genesys-cloud-cx-as-code/export
+          echo "=== Exported Resources Directory Structure ==="
+          find exported_resources -type f 2>/dev/null || echo "No exported_resources folder found yet"
           echo ""
-          echo "=== Looking for exported_queues directories ==="
-          find . -name "exported_queues" -type d
+          echo "=== Architect Flows ==="
+          find exported_resources -name "*.yaml" -o -name "*.yml" 2>/dev/null || echo "No flow files found"
           echo ""
-          echo "=== All .tf files in the workspace ==="
-          find . -name "*.tf" -type f
-          echo ""
-          echo "=== Contents of modules/exported_queues ==="
-          ls -lah modules/exported_queues/
-          echo ""
-          echo "=== File contents of each .tf file in exported_queues ==="
-          for file in modules/exported_queues/*.tf; do
-            echo "--- File: $file ---"
-            cat "$file"
-            echo ""
-          done
+          echo "=== Terraform Files ==="
+          find exported_resources -name "*.tf" 2>/dev/null || echo "No .tf files found"
           cd $GITHUB_WORKSPACE
         shell: bash
-      - name: Commit exported queue files
+      - name: Commit exported flow and dependencies
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add blueprint/genesys-cloud-cx-as-code/modules/exported_queues/*.tf
-          git diff --staged --quiet || git commit -m "Auto-export: Customer Support queue configuration"
+          git add blueprint/genesys-cloud-cx-as-code/export/exported_resources/
+          git diff --staged --quiet || git commit -m "Auto-export: BFSI_POC flow and dependencies"
           git push
         shell: bash
       - uses: ./.github/actions/genesys-cloud-publish-archy-flow
