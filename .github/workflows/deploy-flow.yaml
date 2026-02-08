@@ -53,9 +53,15 @@ jobs:
       - uses: ./.github/actions/genesys-cloud-apply-terraform
       - name: Commit exported queue files
         run: |
+          echo "=== Checking for exported files ==="
+          ls -la blueprint/genesys-cloud-cx-as-code/exported_queues/ || echo "exported_queues folder not found"
+          ls -la blueprint/genesys-cloud-cx-as-code/modules/exported_queues/ || echo "modules/exported_queues folder not found"
+          find blueprint/genesys-cloud-cx-as-code -name "*.tf" -type f | grep -i queue || echo "No queue .tf files found"
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add blueprint/genesys-cloud-cx-as-code/modules/exported_queues/*.tf
+          git add blueprint/genesys-cloud-cx-as-code/exported_queues/*.tf || echo "No files to add in exported_queues"
+          git add blueprint/genesys-cloud-cx-as-code/modules/exported_queues/*.tf || echo "No files to add in modules/exported_queues"
           git diff --staged --quiet || git commit -m "Auto-export: Customer Support queue configuration"
           git push
         shell: bash
