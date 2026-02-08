@@ -17,18 +17,11 @@ resource "genesyscloud_tf_export" "queue_export" {
   include_filter_resources = [
   "genesyscloud_routing_queue::^Customer Support$" # Use a regex to match the queue name
   ]
-  
-  lifecycle {
-    replace_triggered_by = [
-      null_resource.force_export_trigger
-    ]
-  }
 }
 
-resource "null_resource" "force_export_trigger" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
+# This trigger forces the export to run on every apply by destroying/recreating the export resource
+resource "terraform_data" "export_timestamp" {
+  input = timestamp()
 }
 
 resource "genesyscloud_routing_queue" "Queues" {
