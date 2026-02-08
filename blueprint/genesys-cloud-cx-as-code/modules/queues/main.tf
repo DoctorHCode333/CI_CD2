@@ -9,7 +9,7 @@ terraform {
 }
 
 resource "genesyscloud_tf_export" "queue_export" {
-  directory               = "${path.root}/exported_queues"
+  directory               = "${path.root}/modules/exported_queues"
   export_format           = "hcl"
   log_permission_errors   = true
   include_state_file      = false
