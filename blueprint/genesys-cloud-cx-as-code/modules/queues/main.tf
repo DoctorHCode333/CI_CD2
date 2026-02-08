@@ -15,7 +15,7 @@ resource "genesyscloud_tf_export" "queue_export" {
   include_state_file      = false
   enable_dependency_resolution = true # Set to true to include dependencies like skill groups, etc.
   include_filter_resources = [
-  "genesyscloud_routing_queue::^ABC_testqueue$" # Use a regex to match the queue name
+  "genesyscloud_routing_queue::^Customer Support$" # Use a regex to match the queue name
   ]
  }
 
