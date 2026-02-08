@@ -23,7 +23,7 @@ provider "genesyscloud" {
 module "classifier_queues" {
   source                   = "git::https://github.com/GenesysCloudDevOps/genesys-cloud-queues-demo.git?ref=main"
   classifier_queue_names   = ["401K", "IRA", "529", "GeneralSupport", "PremiumSupport"]
-  classifier_queue_members = module.classifier_users.user_ids
+  # classifier_queue_members = module.classifier_users.user_ids
 }
 
 # module "classifier_queues" {
