@@ -1,0 +1,144 @@
+inqueueCall:
+  name: BFSI_POC_InQueue
+  division: Home
+  defaultLanguage: en-us
+  supportedLanguages:
+    en-us:
+      defaultLanguageSkill:
+        lit:
+          name: English
+      textToSpeech:
+        Genesys TTS:
+          voice: Jill
+  settingsInQueueCall:
+    holdMusic:
+      lit:
+        name: PromptSystem.on_hold_music
+  settingsActionDefaults:
+    playAudioOnSilence:
+      timeout:
+        lit:
+          seconds: 40
+    detectSilence:
+      timeout:
+        lit:
+          seconds: 40
+    callData:
+      processingPrompt:
+        lit:
+          name: PromptSystem.processing
+    collectInput:
+      noEntryTimeout:
+        lit:
+          seconds: 5
+    dialByExtension:
+      interDigitTimeout:
+        lit:
+          seconds: 6
+    transferToUser:
+      connectTimeout:
+        noValue: true
+    transferToNumber:
+      connectTimeout:
+        noValue: true
+    transferToGroup:
+      connectTimeout:
+        noValue: true
+    transferToFlowSecure:
+      connectTimeout:
+        lit:
+          seconds: 15
+  settingsErrorHandling:
+    errorHandling:
+      disconnect:
+        none: true
+    preHandlingAudio:
+      tts: Sorry, an error occurred. Please try your call again.
+  settingsPrompts:
+    ensureAudioInPrompts: false
+    promptMediaToValidate:
+      - mediaType: audio
+      - mediaType: tts
+  startUpTaskActions:
+    - holdMusic:
+        name: Hold Music
+        prompt:
+          exp: Flow.HoldPrompt
+        bargeInEnabled:
+          lit: false
+        playStyle:
+          duration:
+            lit:
+              seconds: 5
+    - playEstimatedWaitTime:
+        name: Play Estimated Wait Time
+        estimatedWaitTime:
+          exp: Call.EstimatedWaitTime
+        roundingInterval:
+          lit:
+            minutes: 5
+        specificRoundingIntervals:
+          - lit:
+              seconds: 30
+          - lit:
+              minutes: 1
+          - lit:
+              minutes: 2
+          - lit:
+              minutes: 5
+        playbackMode: lessThan
+    - holdMusic:
+        name: Hold Music
+        prompt:
+          exp: Flow.HoldPrompt
+        bargeInEnabled:
+          lit: false
+        playStyle:
+          duration:
+            lit:
+              seconds: 5
+    - playPositionInQueue:
+        name: Play Position In Queue
+        positionInQueue:
+          exp: Call.PositionInQueue
+        playbackMode: ahead
+    - collectInput:
+        name: Collect Input
+        inputData:
+          var: Task.CAllback
+        digits:
+          range:
+            min: 1
+            max: 20
+        interDigitTimeout:
+          noValue: true
+        noEntryTimeout:
+          noValue: true
+        inputAudio:
+          tts: If you want us to call back once our agents are avaiable please press 1 . Else press 2.
+        acceptJustStar:
+          lit: false
+        acceptJustPound:
+          lit: false
+        verificationType: none
+        outputs:
+          success:
+            actions:
+              - decision:
+                  name: Decision
+                  condition:
+                    exp: Task.CAllback == "1"
+                  outputs:
+                    "yes":
+                      actions:
+                        - playAudio:
+                            name: Play Audio
+                            audio:
+                              tts: Your call back request has been placed . We will call you soon. Thanks, for calling BFSI Bank.
+                        - disconnect:
+                            name: Disconnect
+  startUpTaskVariables:
+    - stringVariable:
+        name: Task.CAllback
+        initialValue:
+          noValue: true

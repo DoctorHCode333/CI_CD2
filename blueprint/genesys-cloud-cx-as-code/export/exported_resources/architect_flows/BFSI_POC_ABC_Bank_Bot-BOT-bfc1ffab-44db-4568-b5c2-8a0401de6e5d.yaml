@@ -1,0 +1,282 @@
+botFlow:
+  name: BFSI_POC_ABC_Bank_Bot
+  division: Home
+  startUpRef: "/botFlow/bots/bot[Default Bot_10]"
+  defaultLanguage: en-us
+  supportedLanguages:
+    en-us:
+      defaultLanguageSkill:
+        noValue: true
+      speechToText:
+        engine:
+          name: Genesys Enhanced v2
+          defaultEngine: true
+  variables:
+    - stringVariable:
+        name: Slot.AccountNumber
+        initialValue:
+          noValue: true
+        isInput: true
+        isOutput: true
+    - stringVariable:
+        name: Slot.ZipCode
+        initialValue:
+          noValue: true
+        isInput: true
+        isOutput: true
+  settingsActionDefaults:
+    askForIntent:
+      voiceEndOfInputTimeout:
+        lit:
+          seconds: 1
+    askForBoolean:
+      voiceEndOfInputTimeout:
+        lit:
+          seconds: 1
+    askForSlot:
+      voiceEndOfInputTimeout:
+        lit:
+          seconds: 1
+    loopAnythingElse:
+      voiceEndOfInputTimeout:
+        lit:
+          seconds: 1
+  settingsErrorHandling:
+    errorHandling:
+      exit:
+        none: true
+    enableAgentEscalation:
+      lit: true
+    errorEventHandover:
+      exp: "MakeCommunication(\n  \"Sorry, an error occurred. One moment, please, while I put you through to someone who can help.\")"
+    agentEscalationConfirmation:
+      exp: "MakeCommunication(\n  \"You want to speak to an advisor. Is that correct?\")"
+    agentEscalationHandover:
+      exp: "MakeCommunication(\n  \"One moment, please, and I will put you through to someone.\")"
+    recognitionFailureEventHandover:
+      exp: "MakeCommunication(\n  \"Sorry, I'm having trouble understanding you. One moment, please, while I put you through to someone who can help.\")"
+    recognitionFailureEventHandling:
+      exit:
+        none: true
+    agentEscalationHandling:
+      exit:
+        none: true
+  settingsPrompts:
+    ensureAudioInPrompts: false
+    promptMediaToValidate:
+      - mediaType: audio
+      - mediaType: tts
+  settingsBotFlow:
+    intentSettings:
+      - intent:
+          confirmation:
+            exp: "MakeCommunication(\n  \"I think you want to Check Account Balance, is that correct?\")"
+          name: Check Account Balance
+      - intent:
+          confirmation:
+            exp: "MakeCommunication(\n  \"I think you want to Find a Branch, is that correct?\")"
+          name: Find a Branch
+  settingsUserInput:
+    enableBargeIn:
+      lit: true
+    enableAutomaticQuickReplies:
+      lit: true
+    noMatchesMax:
+      lit: 3
+    noInputsMax:
+      lit: 3
+    noInputsTimeout:
+      lit:
+        seconds: 7
+    speechToTextSpeechDetectionSensitivity:
+      noValue: true
+    speechToTextMaxSpeechTimeout:
+      noValue: true
+    enableIntentClassificationHinting:
+      lit: false
+    interDigitTimeout:
+      lit:
+        seconds: 3
+    dtmfTerminatingCharacter:
+      lit: "#"
+    confirmationRejectionsMax:
+      lit: 3
+    collectionLowConfidenceThreshold:
+      lit: 20
+    collectionHighConfidenceThreshold:
+      lit: 70
+    confirmationLowConfidenceThreshold:
+      lit: 40
+    noMatchApology:
+      exp: "MakeCommunication(\n  \"Sorry.\")"
+    noInputApology:
+      exp: "MakeCommunication(\n  \"Sorry, I didn't hear you.\")"
+    noToConfirmationApology:
+      exp: "MakeCommunication(\n  \"My mistake.\")"
+    confirmationNoMatchApology:
+      exp: "MakeCommunication(\n  \"Sorry, please say yes or no.\")"
+    confirmationNoInputApology:
+      exp: "MakeCommunication(\n  \"Sorry, I didn't hear you.  Please say yes or no.\")"
+  settingsKnowledge:
+    none: true
+  bots:
+    - bot:
+        name: Default Bot
+        refId: Default Bot_10
+        actions:
+          - askForIntent:
+              name: Ask for Intent
+              question:
+                exp: "MakeCommunication(\n  \"What would you like to do?\")"
+              noInput:
+                exp: "MakeCommunication(\n  \"Just speak a short sentence that describes your query. For example, \\\"Check my account balance\\\"\")"
+              noMatch:
+                exp: "MakeCommunication(\n  \"Tell me again what you would like to do.\")"
+              voiceEndOfInputTimeout:
+                noValue: true
+              outputs:
+                intents:
+                  - intent:
+                      name: Check Account Balance
+                      actions:
+                        - askForSlot:
+                            name: Ask for AccountNumber
+                            slot:
+                              name: AccountNumber
+                            question:
+                              exp: "MakeCommunication(\n  \"What is the\", \n  \"AccountNumber\", \n  \"?\")"
+                            customValidation:
+                              noValue: true
+                            confirmationMode:
+                              lit: never
+                            noInput:
+                              exp: "MakeCommunication(\n  \"Please say or enter the\", \n  \"AccountNumber\")"
+                            noMatch:
+                              exp: "MakeCommunication(\n  \"Please give me the\", \n  \"AccountNumber\")"
+                            voiceEndOfInputTimeout:
+                              noValue: true
+                            outputs:
+                              maxNoInputs:
+                                enabled: false
+                              maxNoMatches:
+                                enabled: false
+                      enabled: true
+                  - intent:
+                      name: Find a Branch
+                      actions:
+                        - askForSlot:
+                            name: Ask for ZipCode
+                            slot:
+                              name: ZipCode
+                            question:
+                              exp: "MakeCommunication(\n  \"What is the\", \n  \"ZipCode\", \n  \"?\")"
+                            customValidation:
+                              noValue: true
+                            confirmationMode:
+                              lit: never
+                            noInput:
+                              exp: "MakeCommunication(\n  \"Please say or enter the\", \n  \"ZipCode\")"
+                            noMatch:
+                              exp: "MakeCommunication(\n  \"Please give me the\", \n  \"ZipCode\")"
+                            voiceEndOfInputTimeout:
+                              noValue: true
+                            outputs:
+                              maxNoInputs:
+                                enabled: false
+                              maxNoMatches:
+                                enabled: false
+                      enabled: true
+                noIntent:
+                  enabled: false
+                knowledge:
+                  enabled: false
+                maxNoInputs:
+                  enabled: false
+          - exitBotFlow:
+              name: Exit Bot Flow
+  settingsNaturalLanguageUnderstanding:
+    nluDomainVersion:
+      intents:
+        - utterances:
+            - segments:
+                - text: "My account number is "
+                - text: "87654321"
+                  entity:
+                    name: AccountNumber
+                - text: ", what's the balance?"
+              id: 1f5389fd-c97d-4f9c-a0c5-e5c0852ddb1d
+              source: User
+            - segments:
+                - text: Tell me what the balance of my account is
+              id: 49b527fa-ee0b-4ed9-8e2c-ecf84636f49f
+              source: User
+            - segments:
+                - text: Check account balance
+              id: 50afa0b4-bdd6-491a-8f9b-103bebfd54ee
+              source: User
+            - segments:
+                - text: Balance enquiry
+              id: 0c0e8d1a-0775-4677-ad11-d8b8da8abec9
+              source: User
+            - segments:
+                - text: "What's the balance on account "
+                - text: "12345678"
+                  entity:
+                    name: AccountNumber
+                - text: "?"
+              id: 521ae9d1-4d89-4365-976d-9593728deff0
+              source: User
+            - segments:
+                - text: I want to check my account balance
+              id: 48be1640-4ab2-4f8c-a7eb-a11411975dec
+              source: User
+          entityNameReferences:
+            - AccountNumber
+          id: 3f9a9080-a476-4c6f-96c3-6f5320301633
+          name: Check Account Balance
+        - utterances:
+            - segments:
+                - text: I want to find my local branch please
+              id: 100b0298-ce47-495d-9928-dd0b14d8ebf7
+              source: User
+            - segments:
+                - text: "What's the closest branch to "
+                - text: "90210"
+                  entity:
+                    name: ZipCode
+                - text: "?"
+              id: 8705a49d-8283-4d33-81fe-0c2ab1067e24
+              source: User
+            - segments:
+                - text: Where's my nearest branch?
+              id: 3b42dacd-beb9-4a71-83db-f97979ca36fa
+              source: User
+          entityNameReferences:
+            - ZipCode
+          id: 45944761-3f57-4010-8f56-efe17ab0ab1f
+          name: Find a Branch
+      entities:
+        - name: AccountNumber
+          type: AccountNumberType
+        - name: ZipCode
+          type: ZipCodeType
+      entityTypes:
+        - name: AccountNumberType
+          description: The description of the Entity Type "AccountNumberType"
+          mechanism:
+            type: Regex
+            restricted: true
+            items:
+              - value: "\\b[0-9]{8}\\b"
+                synonyms: []
+        - name: ZipCodeType
+          description: The description of the Entity Type "ZipCodeType"
+          mechanism:
+            type: Regex
+            restricted: true
+            items:
+              - value: "\\b[0-9]{5}\\b"
+                synonyms: []
+      language: en-us
+      languageVersions: {}
+    mutedUtterances: []
