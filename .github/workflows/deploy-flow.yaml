@@ -51,11 +51,31 @@ jobs:
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
       - uses: ./.github/actions/genesys-cloud-apply-terraform
+      - name: Debug and verify export
+        run: |
+          cd blueprint/genesys-cloud-cx-as-code
+          echo "=== Current working directory ==="
+          pwd
+          echo ""
+          echo "=== Looking for exported_queues directories ==="
+          find . -name "exported_queues" -type d
+          echo ""
+          echo "=== All .tf files in the workspace ==="
+          find . -name "*.tf" -type f
+          echo ""
+          echo "=== Contents of modules/exported_queues ==="
+          ls -lah modules/exported_queues/
+          echo ""
+          echo "=== File contents of each .tf file in exported_queues ==="
+          for file in modules/exported_queues/*.tf; do
+            echo "--- File: $file ---"
+            cat "$file"
+            echo ""
+          done
+          cd $GITHUB_WORKSPACE
+        shell: bash
       - name: Commit exported queue files
         run: |
-          echo "=== Checking for exported files ==="
-          ls -la blueprint/genesys-cloud-cx-as-code/modules/exported_queues/
-          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add blueprint/genesys-cloud-cx-as-code/modules/exported_queues/*.tf

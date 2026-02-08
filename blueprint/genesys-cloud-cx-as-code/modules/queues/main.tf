@@ -13,9 +13,11 @@ resource "genesyscloud_tf_export" "queue_export" {
   export_format           = "hcl"
   log_permission_errors   = true
   include_state_file      = false
-  enable_dependency_resolution = true # Set to true to include dependencies like skill groups, etc.
+  enable_dependency_resolution = false
   include_filter_resources = [
-  "genesyscloud_routing_queue::^Customer Support$" # Use a regex to match the queue name
+    "genesyscloud_routing_queue::^Customer Support$",
+    "genesyscloud_routing_queue::^CUSTOMER SERVICE$",
+    "genesyscloud_routing_queue::^RK$"
   ]
 }
 
