@@ -17,11 +17,14 @@ def main():
     # Check credentials
     client_id = os.environ.get('GENESYSCLOUD_OAUTHCLIENT_ID')
     client_secret = os.environ.get('GENESYSCLOUD_OAUTHCLIENT_SECRET')
-    region = os.environ.get('GENESYSCLOUD_REGION', 'us-west-2')
+    region = os.environ.get('GENESYSCLOUD_REGION', 'us-east-1')  # Default to TEST environment
     
     if not client_id or not client_secret:
         print("ERROR: Missing credentials!")
         print("Set GENESYSCLOUD_OAUTHCLIENT_ID and GENESYSCLOUD_OAUTHCLIENT_SECRET")
+        print("\nFor TEST environment (where CI_CD_Test_Flow exists):")
+        print("  export GENESYSCLOUD_REGION=us-east-1")
+        print("  export GENESYSCLOUD_API_REGION=https://api.mypurecloud.com")
         sys.exit(1)
     
     print(f"=== Connecting to Genesys Cloud ({region}) ===\n")
