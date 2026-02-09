@@ -50,10 +50,14 @@ jobs:
       - uses: hashicorp/setup-terraform@v1
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-      - uses: ./.github/actions/genesys-cloud-apply-terraform
-      - name: Check OAuth permissions and list flows
+      
+      # Export from TEST environment first (where CI_CD_Test_Flow exists)
+      - name: Check TEST environment and list flows
+        env:
+          GENESYSCLOUD_OAUTHCLIENT_ID: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_ID_TEST }}
+          GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST }}
         run: |
-          echo "=== Testing Genesys Cloud API Access ==="
+          echo "=== Testing Genesys Cloud TEST Environment (us-east-1) ==="
           python3 << 'EOF'
           import os
           import sys
@@ -61,28 +65,39 @@ jobs:
               import PureCloudPlatformClientV2
               from PureCloudPlatformClientV2.rest import ApiException
               
-              # Configure SDK
-              region = PureCloudPlatformClientV2.PureCloudRegionHosts.us_west_2
+              # Configure SDK for us-east-1
+              region = PureCloudPlatformClientV2.PureCloudRegionHosts.us_east_1
               PureCloudPlatformClientV2.configuration.host = region.get_api_host()
               
-              # Authenticate
+              print(f"API Host: {region.get_api_host()}")
+              
+              # Authenticate with TEST credentials
               api_client = PureCloudPlatformClientV2.api_client.ApiClient().get_client_credentials_token(
                   os.environ['GENESYSCLOUD_OAUTHCLIENT_ID'],
                   os.environ['GENESYSCLOUD_OAUTHCLIENT_SECRET']
               )
               
+              print("✓ Authentication successful!")
+              
               # List flows
               architect_api = PureCloudPlatformClientV2.ArchitectApi(api_client)
               flows = architect_api.get_flows(page_size=100)
               
-              print(f"\n=== Found {flows.total} total flows ===")
+              print(f"\n=== Found {flows.total} total flows in TEST ===")
               print("\nSearching for flows containing 'CI_CD' or 'Test':")
+              found_target = False
               for flow in flows.entities:
                   if 'ci_cd' in flow.name.lower() or 'test' in flow.name.lower():
                       print(f"  - Name: '{flow.name}' | Type: {flow.type} | ID: {flow.id}")
+                      if flow.name == "CI_CD_Test_Flow":
+                          found_target = True
+                          print(f"    ✓✓✓ TARGET FLOW FOUND! ✓✓✓")
               
-              print("\nAll flows in environment:")
-              for flow in flows.entities[:20]:  # Show first 20
+              if not found_target:
+                  print("\n⚠ WARNING: 'CI_CD_Test_Flow' not found in TEST environment!")
+              
+              print("\nAll flows in TEST environment (first 20):")
+              for flow in flows.entities[:20]:
                   print(f"  - Name: '{flow.name}' | Type: {flow.type}")
               
           except ApiException as e:
@@ -95,7 +110,17 @@ jobs:
               sys.exit(1)
           EOF
         shell: bash
-      - uses: ./.github/actions/genesys-cloud-export-queues
+      
+      - name: Export flow from TEST environment
+        env:
+          GENESYSCLOUD_OAUTHCLIENT_ID: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_ID_TEST }}
+          GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST }}
+          GENESYSCLOUD_API_REGION: "https://api.mypurecloud.com"
+          GENESYSCLOUD_REGION: "us-east-1"
+        uses: ./.github/actions/genesys-cloud-export-queues
+      
+      # Now proceed with DEV environment actions
+      - uses: ./.github/actions/genesys-cloud-apply-terraform
       - name: Debug and verify export
         run: |
           cd blueprint/genesys-cloud-cx-as-code/export
