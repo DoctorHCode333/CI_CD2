@@ -1,0 +1,154 @@
+commonModule:
+  name: 2445093_Lang
+  description: ""
+  division: Home
+  supportedLanguages:
+    en-us:
+      none: true
+    es-us:
+      none: true
+  variables:
+    - integerVariable:
+        name: Common.Accno
+        initialValue:
+          noValue: true
+        isInput: false
+        isOutput: true
+    - stringVariable:
+        name: Common.ani
+        initialValue:
+          noValue: true
+        isInput: true
+        isOutput: false
+    - stringVariable:
+        name: Common.Custname
+        initialValue:
+          noValue: true
+        isInput: false
+        isOutput: true
+    - stringVariable:
+        name: Common.Lang
+        initialValue:
+          noValue: true
+        isInput: false
+        isOutput: true
+  settingsCommonModule:
+    compatibleFlowTypes:
+      - flowType: inboundcall
+  settingsActionDefaults:
+    playAudioOnSilence:
+      timeout:
+        lit:
+          seconds: 40
+    detectSilence:
+      timeout:
+        lit:
+          seconds: 40
+    callData:
+      processingPrompt:
+        noValue: true
+    callDataSecure:
+      processingPrompt:
+        noValue: true
+    collectInput:
+      noEntryTimeout:
+        lit:
+          seconds: 5
+    dialByExtension:
+      interDigitTimeout:
+        lit:
+          seconds: 6
+    transferToUser:
+      connectTimeout:
+        noValue: true
+    transferToNumber:
+      connectTimeout:
+        noValue: true
+    transferToGroup:
+      connectTimeout:
+        noValue: true
+    transferToFlowSecure:
+      connectTimeout:
+        lit:
+          seconds: 15
+  settingsPrompts:
+    ensureAudioInPrompts: false
+    promptMediaToValidate:
+      - mediaType: audio
+      - mediaType: tts
+  startUpTaskActions:
+    - dataTableLookup:
+        name: Data Table Lookup
+        lookupValue:
+          exp: Common.ani
+        dataTable:
+          2445093_Call:
+            foundOutputs:
+              Name:
+                var: Common.Custname
+              Preferred Language:
+                var: Common.Lang
+              Account number:
+                var: Common.Accno
+              Balance:
+                noValue: true
+            failureOutputs:
+              errorType:
+                noValue: true
+              errorMessage:
+                noValue: true
+        outputs:
+          found:
+            actions:
+              - switch:
+                  name: Switch
+                  evaluate:
+                    firstTrue:
+                      default:
+                        actions:
+                          - setLanguage:
+                              name: Set Language
+                              languageValue:
+                                lit: en-us
+                              language: en-us
+                      cases:
+                        - case:
+                            value:
+                              exp: Common.Lang == "English"
+                            actions:
+                              - setLanguage:
+                                  name: Set Language
+                                  languageValue:
+                                    lit: en-us
+                                  language: en-us
+                        - case:
+                            value:
+                              exp: Common.Lang == "Spanish"
+                            actions:
+                              - setLanguage:
+                                  name: Set Language
+                                  languageValue:
+                                    lit: es-us
+                                  language: es-us
+              - playAudio:
+                  name: Play Audio
+                  audio:
+                    alternateSequences:
+                      en-us:
+                        exp: AudioPlaybackOptions(Append(ToAudioTTS("Hello"), ToAudioTTS(Common.Custname), ToAudioTTS("Welcome to XYZ Bank")), true)
+                      es-us:
+                        exp: AudioPlaybackOptions(Append(ToAudioTTS("Hola"), ToAudioTTS(Common.Custname), ToAudioTTS("Bienvenido a Banco XYZ")), true)
+          notFound:
+            actions:
+              - playAudio:
+                  name: Play Audio
+                  audio:
+                    tts: "\"Sorry your phone number is not in our system. Please call with a registered number\""
+          failure:
+            actions:
+              - playAudio:
+                  name: Play Audio
+                  audio:
+                    tts: "\"Action Failed. Please Try Again\""
+    - endTask:
+        name: Exit Common Module
