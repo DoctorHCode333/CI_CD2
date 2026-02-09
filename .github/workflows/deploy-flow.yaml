@@ -22,13 +22,16 @@ jobs:
   ###
   #  job: export-flow-from-test
   #
-  #  This job exports the CI_CD_Test_Flow and its dependencies from the TEST environment (us-east-1)
+  #  This job exports the flow and its dependencies from the TEST environment (us-east-1)
   #  where the flow is located. It verifies the flow exists, exports it with Terraform, and commits
   #  the exported YAML and dependency files to the repository.
+  #
+  #  IMPORTANT: Update FLOW_NAME below to match your exact flow name in Genesys Cloud
   ###
   export-flow-from-test:
     runs-on: ubuntu-latest
     env:
+      FLOW_NAME: "CI_CD_Test_Flow"  # ← UPDATE THIS to your exact flow name
       GENESYSCLOUD_OAUTHCLIENT_ID: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_ID_TEST }}
       GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST }}
       GENESYSCLOUD_API_REGION: "https://api.mypurecloud.com"
@@ -42,9 +45,9 @@ jobs:
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
       
-      - name: Verify TEST environment and list flows
+      - name: Verify TEST environment access
         run: |
-          echo "=== Testing Genesys Cloud TEST Environment (us-east-1) ==="
+          echo "=== Verifying Genesys Cloud TEST Environment ==="
           python3 << 'EOF'
           import os
           import sys
@@ -56,8 +59,6 @@ jobs:
               region = PureCloudPlatformClientV2.PureCloudRegionHosts.us_east_1
               PureCloudPlatformClientV2.configuration.host = region.get_api_host()
               
-              print(f"API Host: {region.get_api_host()}")
-              
               # Authenticate with TEST credentials
               api_client = PureCloudPlatformClientV2.api_client.ApiClient().get_client_credentials_token(
                   os.environ['GENESYSCLOUD_OAUTHCLIENT_ID'],
@@ -65,29 +66,25 @@ jobs:
               )
               
               print("✓ Authentication successful!")
+              print(f"✓ Connected to {region.get_api_host()}")
               
-              # List flows
+              # Verify flow exists
+              target_flow = os.environ.get('FLOW_NAME', 'CI_CD_Test_Flow')
               architect_api = PureCloudPlatformClientV2.ArchitectApi(api_client)
-              flows = architect_api.get_flows(page_size=100)
               
-              print(f"\n=== Found {flows.total} total flows in TEST ===")
-              print("\nSearching for 'CI_CD_Test_Flow':")
-              found_target = False
-              for flow in flows.entities:
-                  if flow.name == "CI_CD_Test_Flow":
-                      found_target = True
-                      print(f"  ✓✓✓ TARGET FLOW FOUND!")
-                      print(f"      Name: '{flow.name}'")
-                      print(f"      Type: {flow.type}")
-                      print(f"      ID: {flow.id}")
-                      break
+              print(f"\n=== Searching for flow: '{target_flow}' ===")
+              flows = architect_api.get_flows(page_size=100, name=target_flow)
               
-              if not found_target:
-                  print("  ✗ 'CI_CD_Test_Flow' NOT FOUND in TEST environment!")
-                  print("\n  Available flows containing 'test' or 'ci_cd':")
-                  for flow in flows.entities:
-                      if 'ci_cd' in flow.name.lower() or 'test' in flow.name.lower():
-                          print(f"    - '{flow.name}' ({flow.type})")
+              if flows.total > 0 and any(f.name == target_flow for f in flows.entities):
+                  flow = next(f for f in flows.entities if f.name == target_flow)
+                  print(f"✓ Flow found!")
+                  print(f"  Name: {flow.name}")
+                  print(f"  Type: {flow.type}")
+                  print(f"  ID: {flow.id}")
+              else:
+                  print(f"✗ Flow '{target_flow}' NOT FOUND!")
+                  print(f"\nUpdate the FLOW_NAME in the workflow or check the flow name in Genesys Cloud.")
+                  print(f"Run the list-flows.py script locally to see available flows.")
                   sys.exit(1)
               
           except ApiException as e:
