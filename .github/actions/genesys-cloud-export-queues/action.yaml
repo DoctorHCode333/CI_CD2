@@ -9,7 +9,16 @@ runs:
   steps:
     - run: |
         cd $GITHUB_WORKSPACE/blueprint/genesys-cloud-cx-as-code/export
+        export TF_LOG=DEBUG
+        export TF_LOG_PATH=./terraform-debug.log
+        echo "=== Starting Terraform Export with DEBUG logging ==="
         terraform init
         terraform apply -auto-approve
+        echo ""
+        echo "=== Terraform Debug Log (last 100 lines) ==="
+        tail -100 terraform-debug.log || echo "No debug log found"
+        echo ""
+        echo "=== Checking provider version ==="
+        terraform version
         cd $GITHUB_WORKSPACE
       shell: bash

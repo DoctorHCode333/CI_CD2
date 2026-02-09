@@ -51,6 +51,50 @@ jobs:
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
       - uses: ./.github/actions/genesys-cloud-apply-terraform
+      - name: Check OAuth permissions and list flows
+        run: |
+          echo "=== Testing Genesys Cloud API Access ==="
+          python3 << 'EOF'
+          import os
+          import sys
+          try:
+              import PureCloudPlatformClientV2
+              from PureCloudPlatformClientV2.rest import ApiException
+              
+              # Configure SDK
+              region = PureCloudPlatformClientV2.PureCloudRegionHosts.us_west_2
+              PureCloudPlatformClientV2.configuration.host = region.get_api_host()
+              
+              # Authenticate
+              api_client = PureCloudPlatformClientV2.api_client.ApiClient().get_client_credentials_token(
+                  os.environ['GENESYSCLOUD_OAUTHCLIENT_ID'],
+                  os.environ['GENESYSCLOUD_OAUTHCLIENT_SECRET']
+              )
+              
+              # List flows
+              architect_api = PureCloudPlatformClientV2.ArchitectApi(api_client)
+              flows = architect_api.get_flows(page_size=100)
+              
+              print(f"\n=== Found {flows.total} total flows ===")
+              print("\nSearching for flows containing 'CI_CD' or 'Test':")
+              for flow in flows.entities:
+                  if 'ci_cd' in flow.name.lower() or 'test' in flow.name.lower():
+                      print(f"  - Name: '{flow.name}' | Type: {flow.type} | ID: {flow.id}")
+              
+              print("\nAll flows in environment:")
+              for flow in flows.entities[:20]:  # Show first 20
+                  print(f"  - Name: '{flow.name}' | Type: {flow.type}")
+              
+          except ApiException as e:
+              print(f"ERROR: API Exception - {e}")
+              print(f"Status: {e.status}")
+              print(f"Reason: {e.reason}")
+              sys.exit(1)
+          except Exception as e:
+              print(f"ERROR: {type(e).__name__} - {e}")
+              sys.exit(1)
+          EOF
+        shell: bash
       - uses: ./.github/actions/genesys-cloud-export-queues
       - name: Debug and verify export
         run: |
