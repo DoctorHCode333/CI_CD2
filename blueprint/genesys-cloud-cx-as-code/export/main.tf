@@ -1,26 +1,33 @@
-# terraform {
-#   required_providers {
-#     genesyscloud = {
-#       source = "mypurecloud/genesyscloud"
-#     }
-#   }
-#   # No remote backend - runs locally
-# }
+terraform {
+  required_providers {
+    genesyscloud = {
+      source = "mypurecloud/genesyscloud"
+    }
+  }
+  # No remote backend - runs locally for export
+}
 
-# provider "genesyscloud" {
-#   sdk_debug = true
-# }
+provider "genesyscloud" {
+  sdk_debug = true
+  # DEV environment configuration (usw2)
+  # Set these environment variables:
+  # GENESYSCLOUD_OAUTHCLIENT_ID (DEV OAuth Client)
+  # GENESYSCLOUD_OAUTHCLIENT_SECRET (DEV OAuth Secret)
+  # GENESYSCLOUD_REGION=us-west-2
+  # GENESYSCLOUD_API_REGION=https://api.usw2.pure.cloud
+}
 
-# # IMPORTANT: Update the flow name in include_filter_resources to match your exact flow name in Genesys Cloud
-# # The flow name must be exact - check with: python blueprint/genesys-cloud-cx-as-code/export/list-flows.py
-# resource "genesyscloud_tf_export" "ci_cd_test_flow_export" {
-#   directory                          = "./exported_resources"
-#   export_format                      = "hcl"
-#   log_permission_errors              = true
-#   include_state_file                 = false
-#   enable_dependency_resolution       = true  # Automatically export all dependencies
-#   use_legacy_architect_flow_exporter = false # Export flows in YAML format
-#   include_filter_resources = [
-#     "genesyscloud_flow::CI_CD_Test_Flow"  # ← UPDATE THIS to match your exact flow name
-#   ]
-# }
+# Export HarshTestFlow from DEV environment (usw2)
+# Exports to parent directory: blueprint/genesys-cloud-cx-as-code/
+# This creates genesyscloud.tf with all flows and dependencies
+resource "genesyscloud_tf_export" "harsh_test_flow_export" {
+  directory                          = "../"  # Export to parent directory
+  export_format                      = "hcl"
+  log_permission_errors              = true
+  include_state_file                 = false
+  enable_dependency_resolution       = true  # Automatically export all dependencies
+  use_legacy_architect_flow_exporter = false # Export flows in YAML format
+  include_filter_resources = [
+    "genesyscloud_flow::HarshTestFlow"  # Export HarshTestFlow
+  ]
+}

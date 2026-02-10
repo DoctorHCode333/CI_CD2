@@ -11,17 +11,17 @@
 #>
 
 Write-Host "=== Local Terraform Export Test with DEBUG Logging ===" -ForegroundColor Cyan
-Write-Host "=== Exporting from TEST environment (us-east-1) ===" -ForegroundColor Yellow
+Write-Host "=== Exporting from DEV environment (us-west-2) ===" -ForegroundColor Yellow
 Write-Host ""
 
 # Check if OAuth credentials are set
 if (-not $env:GENESYSCLOUD_OAUTHCLIENT_ID -or -not $env:GENESYSCLOUD_OAUTHCLIENT_SECRET) {
     Write-Host "ERROR: Genesys Cloud OAuth credentials not set!" -ForegroundColor Red
-    Write-Host "Please set the following environment variables for TEST environment:" -ForegroundColor Yellow
-    Write-Host "  `$env:GENESYSCLOUD_OAUTHCLIENT_ID = 'your-test-client-id'" -ForegroundColor Yellow
-    Write-Host "  `$env:GENESYSCLOUD_OAUTHCLIENT_SECRET = 'your-test-client-secret'" -ForegroundColor Yellow
-    Write-Host "  `$env:GENESYSCLOUD_API_REGION = 'https://api.mypurecloud.com'" -ForegroundColor Yellow
-    Write-Host "  `$env:GENESYSCLOUD_REGION = 'us-east-1'" -ForegroundColor Yellow
+    Write-Host "Please set the following environment variables for DEV environment:" -ForegroundColor Yellow
+    Write-Host "  `$env:GENESYSCLOUD_OAUTHCLIENT_ID = 'your-dev-client-id'" -ForegroundColor Yellow
+    Write-Host "  `$env:GENESYSCLOUD_OAUTHCLIENT_SECRET = 'your-dev-client-secret'" -ForegroundColor Yellow
+    Write-Host "  `$env:GENESYSCLOUD_API_REGION = 'https://api.usw2.pure.cloud'" -ForegroundColor Yellow
+    Write-Host "  `$env:GENESYSCLOUD_REGION = 'us-west-2'" -ForegroundColor Yellow
     exit 1
 }
 

@@ -17,14 +17,14 @@ def main():
     # Check credentials
     client_id = os.environ.get('GENESYSCLOUD_OAUTHCLIENT_ID')
     client_secret = os.environ.get('GENESYSCLOUD_OAUTHCLIENT_SECRET')
-    region = os.environ.get('GENESYSCLOUD_REGION', 'us-east-1')  # Default to TEST environment
+    region = os.environ.get('GENESYSCLOUD_REGION', 'us-west-2')  # Default to DEV environment
     
     if not client_id or not client_secret:
         print("ERROR: Missing credentials!")
         print("Set GENESYSCLOUD_OAUTHCLIENT_ID and GENESYSCLOUD_OAUTHCLIENT_SECRET")
-        print("\nFor TEST environment (where CI_CD_Test_Flow exists):")
-        print("  export GENESYSCLOUD_REGION=us-east-1")
-        print("  export GENESYSCLOUD_API_REGION=https://api.mypurecloud.com")
+        print("\nFor DEV environment (where HarshTestFlow exists):")
+        print("  export GENESYSCLOUD_REGION=us-west-2")
+        print("  export GENESYSCLOUD_API_REGION=https://api.usw2.pure.cloud")
         sys.exit(1)
     
     print(f"=== Connecting to Genesys Cloud ({region}) ===\n")
@@ -82,10 +82,10 @@ def main():
             print(f"\n(Showing page 1 of {flows.page_count})")
         
         # Verify specific flow
-        print("\n=== Verifying Flow: 'CI_CD_Test_Flow' ===")
+        print("\n=== Verifying Flow: 'HarshTestFlow' ===")
         found = False
         for flow in flows.entities:
-            if flow.name == "CI_CD_Test_Flow":
+            if flow.name == "HarshTestFlow":
                 found = True
                 print(f"✓ FOUND: '{flow.name}'")
                 print(f"  Type: {flow.type}")
@@ -96,13 +96,13 @@ def main():
                 break
         
         if not found:
-            print("✗ Flow 'CI_CD_Test_Flow' NOT FOUND!")
+            print("✗ Flow 'HarshTestFlow' NOT FOUND!")
             print("\nPossible reasons:")
             print("  1. Flow doesn't exist in this environment")
             print("  2. Flow has a different name (check list above)")
             print("  3. OAuth client lacks permission to view this flow")
             print("\nSuggested actions:")
-            print("  - Create a flow named 'CI_CD_Test_Flow' in Genesys Cloud")
+            print("  - Create a flow named 'HarshTestFlow' in Genesys Cloud")
             print("  - Or update export config to use an existing flow name from the list above")
         
     except ApiException as e:

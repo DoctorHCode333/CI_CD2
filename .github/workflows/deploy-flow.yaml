@@ -1,77 +1,40 @@
 ###
-# This GitHub action demonstrates how to build a simple CI/CD pipeline that will first deploy
-# all of your Genesys Cloud objects to a development environment, run a set of platform test to ensure that
-# the development environment flow is functioning properly and then if the tests pass deploy to a test
-# environment.
+# This GitHub action exports HarshTestFlow from DEV environment (usw2)
+# and deploys it to TEST environment (use1) via Terraform Cloud remote backend.
 #
-# The three jobs contained here are:
+# Pipeline Flow:
+#  1. export-flow-from-dev: Export HarshTestFlow from DEV (us-west-2)
+#     - Creates genesyscloud.tf with all flows and dependencies in blueprint/genesys-cloud-cx-as-code/
+#     - Commits all exported resources to GitHub
+#  2. deploy-to-test: Deploy to TEST (us-east-1) using Terraform Cloud
+#     - Uses genesyscloud.tf (resources) + main.tf (backend config)
+#     - Deploys via genesys-cloud-apply-terraform action
 #
-#  deploy-email-flow-dev
-#  execute-platform-tests
-#  deploy-email-flow-test
-#
-#  Thes deploy-email-flow-dev and deploy-email-flow-test contain the same steps, but are configured with
-#  OAuth Credentials and environment variables specific to each of our two Genesys Cloud environments (dev and test).
-###s
-name: Genesys Cloud Email Non-Prod Deploy
+# Environment configurations:
+#  DEV:  us-west-2 (usw2.pure.cloud)
+#  TEST: us-east-1 (mypurecloud.com) - Workspace: CI_CD_TEST
+###
+name: Deploy Flow from DEV to TEST
 on:
   push:
     branches: [main]
   workflow_dispatch:
 jobs:
   ###
-  #  job: export-flow-from-test
+  #  job: export-flow-from-dev
   #
-  #  COMMENTED OUT - Export has been completed successfully.
-  #  Uncomment this job when you need to re-export flows from TEST environment.
+  #  This job exports HarshTestFlow from DEV environment (us-west-2).
+  #  Exports to blueprint/genesys-cloud-cx-as-code/genesyscloud.tf (flows and dependencies)
+  #  and blueprint/genesys-cloud-cx-as-code/architect_flows/ (YAML files)
   ###
-  # export-flow-from-test:
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     FLOW_NAME: "CI_CD_Test_Flow"
-  #     GENESYSCLOUD_OAUTHCLIENT_ID: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_ID_TEST }}
-  #     GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST }}
-  #     GENESYSCLOUD_API_REGION: "https://api.mypurecloud.com"
-  #     GENESYSCLOUD_REGION: "us-east-1"
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: ./.github/actions/genesys-cloud-dev-tools
-  #     - uses: hashicorp/setup-terraform@v1
-  #       with:
-  #         cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-  #     - name: Verify TEST environment access
-  #       run: |
-  #         echo "Export job is currently disabled"
-  #       shell: bash
-  #     - name: Export flow from TEST environment
-  #       uses: ./.github/actions/genesys-cloud-export-queues
-  #     - name: Debug and verify export
-  #       run: |
-  #         echo "Export verification disabled"
-  #       shell: bash
-  #     - name: Commit exported flow and dependencies
-  #       run: |
-  #         echo "Commit step disabled"
-  #       shell: bash
-
-  ###
-  #  job: deploy-to-dev
-  #
-  #  This job deploys exported resources to the DEV environment.
-  #  Step 1: Deploy dependencies (queues, data actions, etc.) from genesyscloud.tf using Terraform
-  #  Step 2: Publish all architect flows using Archy
-  ###
-  deploy-to-dev:
+  export-flow-from-dev:
     runs-on: ubuntu-latest
     env:
+      FLOW_NAME: "HarshTestFlow"
       GENESYSCLOUD_OAUTHCLIENT_ID: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_ID_DEV }}
       GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_DEV }}
       GENESYSCLOUD_API_REGION: "https://api.usw2.pure.cloud"
       GENESYSCLOUD_REGION: "us-west-2"
-      GENESYSCLOUD_ARCHY_REGION: "usw2.pure.cloud"
-      GENESYSCLOUD_EMAIL_DOMAIN: "devengagedev"
-      GENESYSCLOUD_EMAIL_DOMAIN_REGION: "usw2.pure.cloud"
-      TF_WORKSPACE: "2"
     steps:
       - uses: actions/checkout@v2
       
@@ -81,155 +44,101 @@ jobs:
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
       
-      # - name: Verify exported resources exist
-      #   run: |
-      #     echo "=== Verifying Exported Resources ==="
-      #     if [ ! -d "blueprint/genesys-cloud-cx-as-code/export/exported_resources" ]; then
-      #       echo "✗ ERROR: No exported_resources directory found!"
-      #       exit 1
-      #     fi
-          
-      #     echo "✓ Exported resources found"
-      #     echo ""
-      #     echo "Exported Terraform resources (genesyscloud.tf):"
-      #     ls -lh blueprint/genesys-cloud-cx-as-code/export/exported_resources/genesyscloud.tf
-      #     echo ""
-      #     echo "Architect Flows:"
-      #     find blueprint/genesys-cloud-cx-as-code/export/exported_resources/architect_flows -name "*.yaml" 2>/dev/null || echo "No flows found"
-      #   shell: bash
+      - name: List flows in DEV environment
+        working-directory: blueprint/genesys-cloud-cx-as-code/export
+        run: |
+          echo "=== Listing flows in DEV environment (usw2) ==="
+          python list-flows.py
+        shell: bash
       
-      # - name: Copy exported resources to main Terraform directory
-      #   run: |
-      #     echo "=== Copying exported resources to remote backend directory ==="
-          
-      #     # Copy genesyscloud.tf (contains all exported resources)
-      #     cp blueprint/genesys-cloud-cx-as-code/export/exported_resources/genesyscloud.tf \
-      #        blueprint/genesys-cloud-cx-as-code/
-          
-      #     # Copy terraform.tfvars if exists
-      #     if [ -f blueprint/genesys-cloud-cx-as-code/export/exported_resources/terraform.tfvars ]; then
-      #       cp blueprint/genesys-cloud-cx-as-code/export/exported_resources/terraform.tfvars \
-      #          blueprint/genesys-cloud-cx-as-code/
-      #     fi
-          
-      #     # Copy scripts directory if exists
-      #     if [ -d blueprint/genesys-cloud-cx-as-code/export/exported_resources/scripts ]; then
-      #       cp -r blueprint/genesys-cloud-cx-as-code/export/exported_resources/scripts \
-      #             blueprint/genesys-cloud-cx-as-code/
-      #     fi
-          
-      #     echo "✓ Exported resources copied to blueprint/genesys-cloud-cx-as-code/"
-      #     echo ""
-      #     echo "Files ready for remote backend deployment:"
-      #     ls -lh blueprint/genesys-cloud-cx-as-code/*.tf blueprint/genesys-cloud-cx-as-code/*.tfvars 2>/dev/null || true
-      #   shell: bash
+      - name: Export HarshTestFlow from DEV
+        uses: ./.github/actions/genesys-cloud-export-flows
       
-      - name: Deploy to DEV using Terraform Cloud (Remote Backend)
-        uses: ./.github/actions/genesys-cloud-apply-terraform
-      - uses: ./.github/actions/genesys-cloud-publish-archy-flow
+      - name: Verify exported resources
+        run: |
+          echo "=== Verifying exported resources ==="
+          echo "Exported Terraform file (genesyscloud.tf):"
+          ls -lh blueprint/genesys-cloud-cx-as-code/genesyscloud.tf || echo "genesyscloud.tf not found!"
+          echo ""
+          echo "Exported flow YAML files:"
+          ls -lh blueprint/genesys-cloud-cx-as-code/architect_flows/*.yaml || echo "No YAML files found"
+          echo ""
+          echo "Contents of export directory:"
+          ls -la blueprint/genesys-cloud-cx-as-code/
+        shell: bash
+      
+      - name: Commit all exported resources to GitHub
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add blueprint/genesys-cloud-cx-as-code/genesyscloud.tf
+          git add blueprint/genesys-cloud-cx-as-code/architect_flows/
+          git add blueprint/genesys-cloud-cx-as-code/terraform.tfvars || true
+          git diff --staged --quiet || git commit -m "Auto-export HarshTestFlow from DEV (usw2) [skip ci]"
+          git push origin main
+        shell: bash
+
+  ###
+  #  job: deploy-to-test
+  #
+  #  This job deploys HarshTestFlow to TEST environment (us-east-1) via Terraform Cloud.
+  #  Uses genesyscloud.tf (exported flows/dependencies) + main.tf (backend configuration)
+  #  Deploys using the genesys-cloud-apply-terraform action
+  ###
+  deploy-to-test:
+    runs-on: ubuntu-latest
+    needs: export-flow-from-dev
+    env:
+      GENESYSCLOUD_OAUTHCLIENT_ID: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_ID_TEST }}
+      GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST }}
+      GENESYSCLOUD_API_REGION: "https://api.mypurecloud.com"
+      GENESYSCLOUD_REGION: "us-east-1"
+      TF_WORKSPACE: "CI_CD_TEST"
+    steps:
+      - uses: actions/checkout@v2
         with:
-          architect-flow-path: $GITHUB_WORKSPACE/blueprint/genesys-cloud-architect-flows/myTestFlow.yaml
-          architect-results-path: $GITHUB_WORKSPACE/output/results.json
-      # - name: Publish flows with Archy
-      #   run: |
-      #     echo "=== Step 2: Publishing Flows to DEV ==="
-      #     export PATH=$PATH:$GITHUB_WORKSPACE/archy
-          
-      #     # Create output directory for results
-      #     mkdir -p $GITHUB_WORKSPACE/output
-          
-      #     cd blueprint/genesys-cloud-cx-as-code/export/exported_resources/architect_flows
-          
-      #     # Find all YAML flow files
-      #     FLOW_FILES=$(find . -name "*.yaml" -o -name "*.yml")
-          
-      #     if [ -z "$FLOW_FILES" ]; then
-      #       echo "✗ No flow files found to publish"
-      #       exit 1
-      #     fi
-          
-      #     echo "Found flows to publish:"
-      #     echo "$FLOW_FILES"
-      #     echo ""
-          
-      #     # Publish each flow
-      #     for flow_file in $FLOW_FILES; do
-      #       echo "Publishing: $flow_file"
-      #       archy publish \
-      #         --forceUnlock \
-      #         --file "$flow_file" \
-      #         --clientId "$GENESYSCLOUD_OAUTHCLIENT_ID" \
-      #         --clientSecret "$GENESYSCLOUD_OAUTHCLIENT_SECRET" \
-      #         --location "$GENESYSCLOUD_ARCHY_REGION" \
-      #         --overwriteResultsFile \
-      #         --resultsFile "$GITHUB_WORKSPACE/output/results-$(basename $flow_file .yaml).json"
-            
-      #       if [ $? -eq 0 ]; then
-      #         echo "✓ Successfully published: $flow_file"
-      #       else
-      #         echo "✗ Failed to publish: $flow_file"
-      #         exit 1
-      #       fi
-      #       echo ""
-      #     done
-          
-      #     echo "✓ All flows published successfully"
-      #     cd $GITHUB_WORKSPACE
-      #   shell: bash
-
-  ###s
-  #  job: execute-platform-tests
-  #
-  #  The execute-platform-tests job first sets all of the environment variables needed to run our Python script that was written
-  #  to demonstrate how to build a platform test that must past successfully before we deploy to test. Since this is doing nothing
-  #  more then running a python script we are just executing python code "in-line" rather then through a local action.
-  #
-  ###
-  # execute-platform-tests:
-  #   runs-on: ubuntu-latest
-  #   needs: deploy-email-flow-dev
-  #   env:
-  #     GENESYSCLOUD_OAUTHCLIENT_ID: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_ID_DEV }}
-  #     GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_DEV }}
-  #     GENESYSCLOUD_REGION: "us-west-2"
-  #     GENESYSCLOUD_API_REGION: "https://api.usw2.pure.cloud"
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: ./.github/actions/genesys-cloud-dev-tools
-  #     - name: Platform tests
-  #       run: python blueprint/scripts/platform_tests.py
-
-  ###
-  #  job: deploy-email-flow-test
-  #
-  #  The deploy-email-flow-test job starts by first setting all of the environment variables specific to the test environment. Secret values
-  #  are pulled directly from the GitHub Actions secrets vaults. Otherwise, all environment variables are set directly in the script.
-  #  Once all of the environment variables are set this job does basically carries out the same steps taken in development environment.
-  #
-  #  Remember our goal is to have our configuration uniformly applied with all of the environment specific values being applied through
-  #  configuration.
-  ###
-  # deploy-email-flow-test:
-  #   runs-on: ubuntu-latest
-  #   needs: execute-platform-tests
-  #   env:
-  #     GENESYSCLOUD_OAUTHCLIENT_ID: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_ID_TEST }}
-  #     GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST }}
-  #     GENESYSCLOUD_API_REGION: "https://api.usw2.pure.cloud"
-  #     GENESYSCLOUD_REGION: "us-west-2"
-  #     GENESYSCLOUD_ARCHY_REGION: "usw2.pure.cloud"
-  #     GENESYSCLOUD_EMAIL_DOMAIN: "devengagetest"
-  #     GENESYSCLOUD_EMAIL_DOMAIN_REGION: "pure.cloud"
-  #     TF_WORKSPACE: "test"
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: ./.github/actions/genesys-cloud-dev-tools
-  #     - uses: hashicorp/setup-terraform@v1
-  #       with:
-  #         cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-  #     - uses: ./.github/actions/genesys-cloud-apply-terraform
-  #     - uses: ./.github/actions/genesys-cloud-publish-archy-flow
-  #       with:
-  #         architect-flow-path: $GITHUB_WORKSPACE/blueprint/genesys-cloud-architect-flows/EmailComprehendFlow.yaml
-  #         architect-results-path: $GITHUB_WORKSPACE/output/results.json
-  #     - uses: ./.github/actions/genesys-cloud-create-email-domain-route
+          ref: main  # Get latest commit with exported resources
+      
+      - uses: ./.github/actions/genesys-cloud-dev-tools
+      
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+      
+      - name: Verify exported resources before deployment
+        run: |
+          echo "=== Verifying resources for deployment ==="
+          echo "main.tf (backend config):"
+          ls -lh blueprint/genesys-cloud-cx-as-code/main.tf
+          echo ""
+          echo "genesyscloud.tf (flows and dependencies):"
+          ls -lh blueprint/genesys-cloud-cx-as-code/genesyscloud.tf
+          echo ""
+          echo "Flow YAML files:"
+          ls -lh blueprint/genesys-cloud-cx-as-code/architect_flows/*.yaml || echo "No YAML files found"
+        shell: bash
+      
+      - name: Deploy to TEST using Terraform Cloud
+        uses: ./.github/actions/genesys-cloud-apply-terraform
+      
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "## Deployment Successful! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Flow:** HarshTestFlow" >> $GITHUB_STEP_SUMMARY
+          echo "**Source:** DEV (us-west-2)" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** TEST (us-east-1)" >> $GITHUB_STEP_SUMMARY
+          echo "**Terraform Workspace:** CI_CD_TEST" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files Deployed:" >> $GITHUB_STEP_SUMMARY
+          echo "- main.tf (Terraform Cloud backend configuration)" >> $GITHUB_STEP_SUMMARY
+          echo "- genesyscloud.tf (Exported flows and dependencies)" >> $GITHUB_STEP_SUMMARY
+          echo "- architect_flows/*.yaml (Flow definitions)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verification Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check Terraform Cloud workspace: CI_CD_TEST" >> $GITHUB_STEP_SUMMARY
+          echo "2. Login to Genesys Cloud TEST org (us-east-1)" >> $GITHUB_STEP_SUMMARY
+          echo "3. Navigate to Admin > Architect > Flows" >> $GITHUB_STEP_SUMMARY
+          echo "4. Verify HarshTestFlow exists and is configured correctly" >> $GITHUB_STEP_SUMMARY
+        shell: bash

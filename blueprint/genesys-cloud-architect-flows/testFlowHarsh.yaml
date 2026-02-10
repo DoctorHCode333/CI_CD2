@@ -1,5 +1,5 @@
 inboundCall:
-  name: TestFlowHarsh
+  name: HarshTestFlow
   description: Basic Inbound Flow
   division: Home
   startUpRef: "/inboundCall/tasks/task[New Task 1_12]"
