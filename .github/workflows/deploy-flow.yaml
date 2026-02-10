@@ -162,6 +162,27 @@ jobs:
           echo "✅ NOT deploying to DEV environment (us-west-2)"
         shell: bash
       
+      - name: Safety Check - Remove Home Division from State
+        working-directory: blueprint/genesys-cloud-cx-as-code/deploy
+        run: |
+          echo "=== Safety Check: Removing Home Division from Terraform Management ==="
+          
+          # Initialize terraform to access state
+          terraform init -reconfigure
+          
+          # Check if Home division exists in state
+          if terraform state list | grep -q "genesyscloud_auth_division.Home"; then
+            echo "⚠️  Found Home division in Terraform state"
+            echo "⚠️  Removing from state (will NOT delete from TEST org)"
+            terraform state rm genesyscloud_auth_division.Home || true
+            echo "✅ Home division removed from Terraform management"
+            echo "✅ Division remains intact in TEST org"
+          else
+            echo "✅ Home division not in state, no action needed"
+          fi
+          echo ""
+        shell: bash
+      
       - name: Deploy to TEST using Terraform Cloud
         uses: ./.github/actions/genesys-cloud-apply-terraform
       

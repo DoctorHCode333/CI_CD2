@@ -96,6 +96,20 @@ try {
         terraform workspace new CI_CD_TEST
     }
     
+    # Step 2.5: Safety Check - Remove Home division from state if it exists
+    Write-Host ""
+    Write-Host "Step 2.5: Safety Check - Removing Home Division from Terraform Management..." -ForegroundColor Cyan
+    $stateList = terraform state list 2>&1
+    if ($stateList -match "genesyscloud_auth_division.Home") {
+        Write-Host "  ⚠  Found Home division in Terraform state" -ForegroundColor Yellow
+        Write-Host "  ⚠  Removing from state (will NOT delete from TEST org)" -ForegroundColor Yellow
+        terraform state rm genesyscloud_auth_division.Home 2>&1 | Out-Null
+        Write-Host "  ✓ Home division removed from Terraform management" -ForegroundColor Green
+        Write-Host "  ✓ Division remains intact in TEST org" -ForegroundColor Green
+    } else {
+        Write-Host "  ✓ Home division not in state, no action needed" -ForegroundColor Green
+    }
+    
     # Step 3: Validate configuration
     Write-Host ""
     Write-Host "Step 3: Validating Terraform configuration..." -ForegroundColor Cyan
