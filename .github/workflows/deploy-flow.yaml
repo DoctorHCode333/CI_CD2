@@ -81,98 +81,101 @@ jobs:
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
       
-      - name: Verify exported resources exist
-        run: |
-          echo "=== Verifying Exported Resources ==="
-          if [ ! -d "blueprint/genesys-cloud-cx-as-code/export/exported_resources" ]; then
-            echo "✗ ERROR: No exported_resources directory found!"
-            exit 1
-          fi
+      # - name: Verify exported resources exist
+      #   run: |
+      #     echo "=== Verifying Exported Resources ==="
+      #     if [ ! -d "blueprint/genesys-cloud-cx-as-code/export/exported_resources" ]; then
+      #       echo "✗ ERROR: No exported_resources directory found!"
+      #       exit 1
+      #     fi
           
-          echo "✓ Exported resources found"
-          echo ""
-          echo "Exported Terraform resources (genesyscloud.tf):"
-          ls -lh blueprint/genesys-cloud-cx-as-code/export/exported_resources/genesyscloud.tf
-          echo ""
-          echo "Architect Flows:"
-          find blueprint/genesys-cloud-cx-as-code/export/exported_resources/architect_flows -name "*.yaml" 2>/dev/null || echo "No flows found"
-        shell: bash
+      #     echo "✓ Exported resources found"
+      #     echo ""
+      #     echo "Exported Terraform resources (genesyscloud.tf):"
+      #     ls -lh blueprint/genesys-cloud-cx-as-code/export/exported_resources/genesyscloud.tf
+      #     echo ""
+      #     echo "Architect Flows:"
+      #     find blueprint/genesys-cloud-cx-as-code/export/exported_resources/architect_flows -name "*.yaml" 2>/dev/null || echo "No flows found"
+      #   shell: bash
       
-      - name: Copy exported resources to main Terraform directory
-        run: |
-          echo "=== Copying exported resources to remote backend directory ==="
+      # - name: Copy exported resources to main Terraform directory
+      #   run: |
+      #     echo "=== Copying exported resources to remote backend directory ==="
           
-          # Copy genesyscloud.tf (contains all exported resources)
-          cp blueprint/genesys-cloud-cx-as-code/export/exported_resources/genesyscloud.tf \
-             blueprint/genesys-cloud-cx-as-code/
+      #     # Copy genesyscloud.tf (contains all exported resources)
+      #     cp blueprint/genesys-cloud-cx-as-code/export/exported_resources/genesyscloud.tf \
+      #        blueprint/genesys-cloud-cx-as-code/
           
-          # Copy terraform.tfvars if exists
-          if [ -f blueprint/genesys-cloud-cx-as-code/export/exported_resources/terraform.tfvars ]; then
-            cp blueprint/genesys-cloud-cx-as-code/export/exported_resources/terraform.tfvars \
-               blueprint/genesys-cloud-cx-as-code/
-          fi
+      #     # Copy terraform.tfvars if exists
+      #     if [ -f blueprint/genesys-cloud-cx-as-code/export/exported_resources/terraform.tfvars ]; then
+      #       cp blueprint/genesys-cloud-cx-as-code/export/exported_resources/terraform.tfvars \
+      #          blueprint/genesys-cloud-cx-as-code/
+      #     fi
           
-          # Copy scripts directory if exists
-          if [ -d blueprint/genesys-cloud-cx-as-code/export/exported_resources/scripts ]; then
-            cp -r blueprint/genesys-cloud-cx-as-code/export/exported_resources/scripts \
-                  blueprint/genesys-cloud-cx-as-code/
-          fi
+      #     # Copy scripts directory if exists
+      #     if [ -d blueprint/genesys-cloud-cx-as-code/export/exported_resources/scripts ]; then
+      #       cp -r blueprint/genesys-cloud-cx-as-code/export/exported_resources/scripts \
+      #             blueprint/genesys-cloud-cx-as-code/
+      #     fi
           
-          echo "✓ Exported resources copied to blueprint/genesys-cloud-cx-as-code/"
-          echo ""
-          echo "Files ready for remote backend deployment:"
-          ls -lh blueprint/genesys-cloud-cx-as-code/*.tf blueprint/genesys-cloud-cx-as-code/*.tfvars 2>/dev/null || true
-        shell: bash
+      #     echo "✓ Exported resources copied to blueprint/genesys-cloud-cx-as-code/"
+      #     echo ""
+      #     echo "Files ready for remote backend deployment:"
+      #     ls -lh blueprint/genesys-cloud-cx-as-code/*.tf blueprint/genesys-cloud-cx-as-code/*.tfvars 2>/dev/null || true
+      #   shell: bash
       
       - name: Deploy to DEV using Terraform Cloud (Remote Backend)
         uses: ./.github/actions/genesys-cloud-apply-terraform
-      
-      - name: Publish flows with Archy
-        run: |
-          echo "=== Step 2: Publishing Flows to DEV ==="
-          export PATH=$PATH:$GITHUB_WORKSPACE/archy
+      - uses: ./.github/actions/genesys-cloud-publish-archy-flow
+        with:
+          architect-flow-path: $GITHUB_WORKSPACE/blueprint/genesys-cloud-architect-flows/myTestFlow.yaml
+          architect-results-path: $GITHUB_WORKSPACE/output/results.json
+      # - name: Publish flows with Archy
+      #   run: |
+      #     echo "=== Step 2: Publishing Flows to DEV ==="
+      #     export PATH=$PATH:$GITHUB_WORKSPACE/archy
           
-          # Create output directory for results
-          mkdir -p $GITHUB_WORKSPACE/output
+      #     # Create output directory for results
+      #     mkdir -p $GITHUB_WORKSPACE/output
           
-          cd blueprint/genesys-cloud-cx-as-code/export/exported_resources/architect_flows
+      #     cd blueprint/genesys-cloud-cx-as-code/export/exported_resources/architect_flows
           
-          # Find all YAML flow files
-          FLOW_FILES=$(find . -name "*.yaml" -o -name "*.yml")
+      #     # Find all YAML flow files
+      #     FLOW_FILES=$(find . -name "*.yaml" -o -name "*.yml")
           
-          if [ -z "$FLOW_FILES" ]; then
-            echo "✗ No flow files found to publish"
-            exit 1
-          fi
+      #     if [ -z "$FLOW_FILES" ]; then
+      #       echo "✗ No flow files found to publish"
+      #       exit 1
+      #     fi
           
-          echo "Found flows to publish:"
-          echo "$FLOW_FILES"
-          echo ""
+      #     echo "Found flows to publish:"
+      #     echo "$FLOW_FILES"
+      #     echo ""
           
-          # Publish each flow
-          for flow_file in $FLOW_FILES; do
-            echo "Publishing: $flow_file"
-            archy publish \
-              --forceUnlock \
-              --file "$flow_file" \
-              --clientId "$GENESYSCLOUD_OAUTHCLIENT_ID" \
-              --clientSecret "$GENESYSCLOUD_OAUTHCLIENT_SECRET" \
-              --location "$GENESYSCLOUD_ARCHY_REGION" \
-              --overwriteResultsFile \
-              --resultsFile "$GITHUB_WORKSPACE/output/results-$(basename $flow_file .yaml).json"
+      #     # Publish each flow
+      #     for flow_file in $FLOW_FILES; do
+      #       echo "Publishing: $flow_file"
+      #       archy publish \
+      #         --forceUnlock \
+      #         --file "$flow_file" \
+      #         --clientId "$GENESYSCLOUD_OAUTHCLIENT_ID" \
+      #         --clientSecret "$GENESYSCLOUD_OAUTHCLIENT_SECRET" \
+      #         --location "$GENESYSCLOUD_ARCHY_REGION" \
+      #         --overwriteResultsFile \
+      #         --resultsFile "$GITHUB_WORKSPACE/output/results-$(basename $flow_file .yaml).json"
             
-            if [ $? -eq 0 ]; then
-              echo "✓ Successfully published: $flow_file"
-            else
-              echo "✗ Failed to publish: $flow_file"
-              exit 1
-            fi
-            echo ""
-          done
+      #       if [ $? -eq 0 ]; then
+      #         echo "✓ Successfully published: $flow_file"
+      #       else
+      #         echo "✗ Failed to publish: $flow_file"
+      #         exit 1
+      #       fi
+      #       echo ""
+      #     done
           
-          echo "✓ All flows published successfully"
-          cd $GITHUB_WORKSPACE
-        shell: bash
+      #     echo "✓ All flows published successfully"
+      #     cd $GITHUB_WORKSPACE
+      #   shell: bash
 
   ###s
   #  job: execute-platform-tests
