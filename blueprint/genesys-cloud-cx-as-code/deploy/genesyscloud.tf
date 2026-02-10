@@ -1,8 +1,6 @@
 
-resource "genesyscloud_auth_division" "Home" {
-  home = true
-  name = "Home"
-}
+# Reference existing Home division (already exists in TEST environment)
+data "genesyscloud_auth_division_home" "Home" {}
 
 resource "genesyscloud_flow" "INBOUNDCALL_HarshTestFlow" {
   type              = "INBOUNDCALL"
@@ -118,7 +116,7 @@ resource "genesyscloud_routing_queue" "PremiumSupport" {
   auto_answer_only        = true
   scoring_method          = "TimestampAndPriority"
   acw_timeout_ms          = 300000
-  division_id             = "${genesyscloud_auth_division.Home.id}"
+  division_id             = data.genesyscloud_auth_division_home.Home.id
   media_settings_callback {
     enable_auto_dial_and_end  = false
     service_level_duration_ms = 20000
@@ -144,7 +142,7 @@ resource "genesyscloud_routing_queue" "ROTH" {
     service_level_duration_ms = 86400000
     service_level_percentage  = 0.8
   }
-  division_id              = "${genesyscloud_auth_division.Home.id}"
+  division_id              = data.genesyscloud_auth_division_home.Home.id
   last_agent_routing_mode  = "AnyAgent"
   acw_timeout_ms           = 300000
   enable_manual_assignment = true
@@ -184,7 +182,7 @@ resource "genesyscloud_routing_queue" "ROTH" {
 
 resource "genesyscloud_routing_queue" "_401K" {
   acw_timeout_ms = 300000
-  division_id    = "${genesyscloud_auth_division.Home.id}"
+  division_id    = data.genesyscloud_auth_division_home.Home.id
   media_settings_chat {
     alerting_timeout_sec      = 30
     enable_auto_answer        = false

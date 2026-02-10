@@ -65,6 +65,15 @@ jobs:
           # Remove file_content_hash attribute (computed attribute, cannot be set manually)
           sed -i '/file_content_hash/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
           echo "✓ file_content_hash attribute removed"
+          
+          # Remove Home division resource (already exists in TEST) and replace with data source
+          sed -i '/^resource "genesyscloud_auth_division" "Home" {/,/^}/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          sed -i '1i# Reference existing Home division (already exists in TEST environment)\ndata "genesyscloud_auth_division_home" "Home" {}\n' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          echo "✓ Home division resource replaced with data source"
+          
+          # Replace division_id references to use data source
+          sed -i 's/\${genesyscloud_auth_division\.Home\.id}/data.genesyscloud_auth_division_home.Home.id/g' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          echo "✓ Division references updated to use data source"
           echo ""
           echo "First 20 lines of cleaned genesyscloud.tf:"
           head -20 blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
@@ -132,6 +141,25 @@ jobs:
           echo ""
           echo "Flow YAML files:"
           ls -lh blueprint/genesys-cloud-cx-as-code/deploy/architect_flows/*.yaml || echo "No YAML files found"
+        shell: bash
+      
+      - name: Confirm TEST Region Configuration
+        run: |
+          echo "=== Confirming TEST Environment Region ==="
+          echo "✓ GENESYSCLOUD_REGION: $GENESYSCLOUD_REGION"
+          echo "✓ GENESYSCLOUD_API_REGION: $GENESYSCLOUD_API_REGION"
+          echo "✓ Terraform Workspace: $TF_WORKSPACE"
+          echo ""
+          if [ "$GENESYSCLOUD_REGION" != "us-east-1" ]; then
+            echo "❌ ERROR: Wrong region! Expected us-east-1 (TEST), got $GENESYSCLOUD_REGION"
+            exit 1
+          fi
+          if [ "$GENESYSCLOUD_API_REGION" != "https://api.mypurecloud.com" ]; then
+            echo "❌ ERROR: Wrong API region! Expected https://api.mypurecloud.com (TEST), got $GENESYSCLOUD_API_REGION"
+            exit 1
+          fi
+          echo "✅ Confirmed: Deploying to TEST environment (us-east-1)"
+          echo "✅ NOT deploying to DEV environment (us-west-2)"
         shell: bash
       
       - name: Deploy to TEST using Terraform Cloud

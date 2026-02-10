@@ -56,6 +56,19 @@ Write-Host "  Region: $($env:GENESYSCLOUD_REGION)" -ForegroundColor Green
 Write-Host "  Terraform Workspace: CI_CD_TEST" -ForegroundColor Green
 Write-Host ""
 
+# Final verification: Ensure we're deploying to TEST not DEV
+Write-Host "=== Confirming TEST Environment (NOT DEV) ===" -ForegroundColor Cyan
+if ($env:GENESYSCLOUD_REGION -eq "us-east-1" -and $env:GENESYSCLOUD_API_REGION -eq "https://api.mypurecloud.com") {
+    Write-Host "✓ CONFIRMED: Deploying to TEST environment (us-east-1)" -ForegroundColor Green
+    Write-Host "✓ NOT deploying to DEV environment (us-west-2)" -ForegroundColor Green
+} else {
+    Write-Host "✗ ERROR: Wrong region configured!" -ForegroundColor Red
+    Write-Host "  Expected: us-east-1 (TEST)" -ForegroundColor Red
+    Write-Host "  Current: $($env:GENESYSCLOUD_REGION)" -ForegroundColor Red
+    exit 1
+}
+Write-Host ""
+
 # Navigate to main deployment directory
 $deployDir = Join-Path $PSScriptRoot ".."
 Push-Location $deployDir
