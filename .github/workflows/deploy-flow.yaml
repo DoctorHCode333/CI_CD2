@@ -54,6 +54,18 @@ jobs:
       - name: Export HarshTestFlow from DEV
         uses: ./.github/actions/genesys-cloud-export-flows
       
+      - name: Clean up exported genesyscloud.tf
+        run: |
+          echo "=== Removing terraform block from genesyscloud.tf ==="
+          # Remove terraform block with required_providers to avoid conflict with main.tf
+          # The terraform block in main.tf contains the remote backend configuration
+          sed -i '/^terraform {/,/^}/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          echo "✓ Terraform block removed from genesyscloud.tf"
+          echo ""
+          echo "First 20 lines of cleaned genesyscloud.tf:"
+          head -20 blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+        shell: bash
+      
       - name: Verify exported resources
         run: |
           echo "=== Verifying exported resources ==="

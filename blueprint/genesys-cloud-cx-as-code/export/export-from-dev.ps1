@@ -92,6 +92,20 @@ try {
         exit 1
     }
     
+    # Step 4.5: Clean up exported genesyscloud.tf - remove terraform block
+    Write-Host ""
+    Write-Host "Step 4.5: Cleaning up exported genesyscloud.tf..." -ForegroundColor Cyan
+    $genesysCloudTf = Join-Path $deployDir "genesyscloud.tf"
+    
+    if (Test-Path $genesysCloudTf) {
+        $content = Get-Content $genesysCloudTf -Raw
+        # Remove terraform block (including required_providers) to avoid conflict with main.tf
+        $content = $content -replace '(?s)terraform\s*\{[^}]*required_providers[^}]*\}[^}]*\}\s*', ''
+        Set-Content -Path $genesysCloudTf -Value $content
+        Write-Host "  ✓ Removed terraform block from genesyscloud.tf" -ForegroundColor Green
+        Write-Host "    (main.tf contains the required_providers and remote backend config)" -ForegroundColor White
+    }
+    
     # Step 5: Verify exported files in deploy directory
     Write-Host ""
     Write-Host "Step 5: Verifying exported resources in deploy directory..." -ForegroundColor Cyan
