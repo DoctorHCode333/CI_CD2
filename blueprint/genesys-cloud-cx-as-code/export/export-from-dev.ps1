@@ -92,17 +92,23 @@ try {
         exit 1
     }
     
-    # Step 4.5: Clean up exported genesyscloud.tf - remove terraform block
+    # Step 4.5: Clean up exported genesyscloud.tf - remove terraform block and computed attributes
     Write-Host ""
     Write-Host "Step 4.5: Cleaning up exported genesyscloud.tf..." -ForegroundColor Cyan
     $genesysCloudTf = Join-Path $deployDir "genesyscloud.tf"
     
     if (Test-Path $genesysCloudTf) {
         $content = Get-Content $genesysCloudTf -Raw
+        
         # Remove terraform block (including required_providers) to avoid conflict with main.tf
         $content = $content -replace '(?s)terraform\s*\{[^}]*required_providers[^}]*\}[^}]*\}\s*', ''
+        Write-Host "  ✓ Removed terraform block" -ForegroundColor Green
+        
+        # Remove file_content_hash attribute (computed attribute, cannot be set manually)
+        $content = $content -replace '\s*file_content_hash\s*=\s*"[^"]*"\s*\n', "`n"
+        Write-Host "  ✓ Removed file_content_hash attribute" -ForegroundColor Green
+        
         Set-Content -Path $genesysCloudTf -Value $content
-        Write-Host "  ✓ Removed terraform block from genesyscloud.tf" -ForegroundColor Green
         Write-Host "    (main.tf contains the required_providers and remote backend config)" -ForegroundColor White
     }
     

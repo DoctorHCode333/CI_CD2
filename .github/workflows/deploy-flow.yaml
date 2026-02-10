@@ -56,11 +56,15 @@ jobs:
       
       - name: Clean up exported genesyscloud.tf
         run: |
-          echo "=== Removing terraform block from genesyscloud.tf ==="
+          echo "=== Cleaning exported genesyscloud.tf ==="
           # Remove terraform block with required_providers to avoid conflict with main.tf
           # The terraform block in main.tf contains the remote backend configuration
           sed -i '/^terraform {/,/^}/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
-          echo "✓ Terraform block removed from genesyscloud.tf"
+          echo "✓ Terraform block removed"
+          
+          # Remove file_content_hash attribute (computed attribute, cannot be set manually)
+          sed -i '/file_content_hash/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          echo "✓ file_content_hash attribute removed"
           echo ""
           echo "First 20 lines of cleaned genesyscloud.tf:"
           head -20 blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf

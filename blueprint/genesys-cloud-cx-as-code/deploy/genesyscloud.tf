@@ -7,7 +7,6 @@ resource "genesyscloud_auth_division" "Home" {
 resource "genesyscloud_flow" "INBOUNDCALL_HarshTestFlow" {
   type              = "INBOUNDCALL"
   depends_on        = [genesyscloud_routing_queue.PremiumSupport, genesyscloud_integration_action.waitTime, genesyscloud_routing_queue.ROTH, genesyscloud_routing_queue._401K]
-  file_content_hash = "b9f834b6308efd709c14def755550abdb4391b8f1e7a27c3186eff7851326617"
   filepath          = "architect_flows/HarshTestFlow-INBOUNDCALL-c973b27c-487e-4c58-beb1-b5315cb84bf9.yaml"
   name              = "HarshTestFlow"
 }
