@@ -173,7 +173,7 @@ jobs:
           # Verify we're using the correct workspace
           echo ""
           echo "=== Verifying Terraform Cloud Workspace ==="
-          CURRENT_WORKSPACE=$(terraform workspace show)
+          CURRENT_WORKSPACE=$(terraform workspace show | tail -n 1 | tr -d '[:space:]')
           echo "Current workspace: $CURRENT_WORKSPACE (full name: CI_CD$CURRENT_WORKSPACE)"
           
           if [ "$CURRENT_WORKSPACE" != "_TEST" ]; then
