@@ -7,9 +7,8 @@
 
 terraform {
   required_providers {
-    genesyscloud = {
-      source  = "mypurecloud/genesyscloud"
-      version = "1.75.1"
+   genesyscloud = {
+      source = "mypurecloud/genesyscloud"
     }
   }
   
@@ -17,7 +16,7 @@ terraform {
     organization = "TestCognizant"
 
     workspaces {
-      name = "CI_CD_TEST"  # TEST environment workspace
+      prefix = "CI_CD_TEST"  # TEST environment workspace
     }
   }
 }
