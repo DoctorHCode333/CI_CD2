@@ -7,17 +7,16 @@
 
 terraform {
   required_providers {
-   genesyscloud = {
-      source = "mypurecloud/genesyscloud"
+    genesyscloud = {
+      source  = "mypurecloud/genesyscloud"
+      version = "1.75.1"
     }
   }
   
   backend "remote" {
     organization = "TestCognizant"
-
-    workspaces {
-      name = "CI_CD_TEST"  # TEST environment workspace
-    }
+    # Workspace is selected via TF_WORKSPACE environment variable
+    # This allows switching between CI_CD2 (DEV) and CI_CD_TEST (TEST)
   }
 }
 

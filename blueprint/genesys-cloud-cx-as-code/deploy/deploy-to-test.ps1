@@ -13,6 +13,11 @@
 Write-Host "=== Deploy HarshTestFlow to TEST (use1) via Terraform Cloud ===" -ForegroundColor Cyan
 Write-Host ""
 
+# Set Terraform Cloud workspace to CI_CD_TEST
+$env:TF_WORKSPACE = "CI_CD_TEST"
+Write-Host "Setting Terraform Cloud workspace: $env:TF_WORKSPACE" -ForegroundColor Cyan
+Write-Host ""
+
 # Check if OAuth credentials are set for TEST environment
 if (-not $env:GENESYSCLOUD_OAUTHCLIENT_ID -or -not $env:GENESYSCLOUD_OAUTHCLIENT_SECRET) {
     Write-Host "ERROR: TEST environment credentials not set!" -ForegroundColor Red
@@ -86,24 +91,15 @@ try {
         exit 1
     }
     
-    # Step 2: Select workspace
+    # Step 2: Verify we're using the correct workspace
     Write-Host ""
-    Write-Host "Step 2: Selecting workspace CI_CD_TEST..." -ForegroundColor Cyan
-    terraform workspace select CI_CD_TEST
-    
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Workspace doesn't exist, creating it..." -ForegroundColor Yellow
-        terraform workspace new CI_CD_TEST
-    }
-    
-    # Verify we're using the correct workspace
-    Write-Host ""
-    Write-Host "=== Verifying Terraform Cloud Workspace ===" -ForegroundColor Cyan
+    Write-Host "Step 2: Verifying Terraform Cloud Workspace..." -ForegroundColor Cyan
     $currentWorkspace = (terraform workspace show).Trim()
     Write-Host "Current workspace: $currentWorkspace" -ForegroundColor White
     
     if ($currentWorkspace -ne "CI_CD_TEST") {
         Write-Host "✗ ERROR: Wrong workspace! Expected CI_CD_TEST, got $currentWorkspace" -ForegroundColor Red
+        Write-Host "✗ Make sure TF_WORKSPACE environment variable is set correctly" -ForegroundColor Red
         exit 1
     }
     Write-Host "✓ Confirmed: Using CI_CD_TEST workspace (NOT CI_CD2)" -ForegroundColor Green
