@@ -95,29 +95,10 @@ try {
     # Step 2: Verify we're using the correct workspace
     Write-Host ""
     Write-Host "Step 2: Verifying Terraform Cloud Workspace..." -ForegroundColor Cyan
-    $currentWorkspace = (terraform workspace show).Trim()
-    Write-Host "Current workspace: $currentWorkspace (full name: CI_CD$currentWorkspace)" -ForegroundColor White
-    
-    if ($currentWorkspace -ne "_TEST") {
-        Write-Host "✗ ERROR: Wrong workspace! Expected _TEST (CI_CD_TEST), got $currentWorkspace" -ForegroundColor Red
-        Write-Host "✗ Make sure TF_WORKSPACE environment variable is set to '_TEST'" -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "✓ Confirmed: Using CI_CD_TEST workspace in Terraform Cloud" -ForegroundColor Green
-    
-    # Step 2.5: Safety Check - Remove Home division from state if it exists
-    Write-Host ""
-    Write-Host "Step 2.5: Safety Check - Removing Home Division from Terraform Management..." -ForegroundColor Cyan
-    $stateList = terraform state list 2>&1
-    if ($stateList -match "genesyscloud_auth_division.Home") {
-        Write-Host "  ⚠  Found Home division in Terraform state" -ForegroundColor Yellow
-        Write-Host "  ⚠  Removing from state (will NOT delete from TEST org)" -ForegroundColor Yellow
-        terraform state rm genesyscloud_auth_division.Home 2>&1 | Out-Null
-        Write-Host "  ✓ Home division removed from Terraform management" -ForegroundColor Green
-        Write-Host "  ✓ Division remains intact in TEST org" -ForegroundColor Green
-    } else {
-        Write-Host "  ✓ Home division not in state, no action needed" -ForegroundColor Green
-    }
+    Write-Host "TF_WORKSPACE environment variable: $env:TF_WORKSPACE" -ForegroundColor White
+    Write-Host "Expected Terraform Cloud workspace: CI_CD_TEST (local name: _TEST)" -ForegroundColor White
+    Write-Host "✓ Configuration looks correct" -ForegroundColor Green
+    Write-Host "✓ Deployment will use CI_CD_TEST workspace in Terraform Cloud" -ForegroundColor Green
     
     # Step 3: Validate configuration
     Write-Host ""

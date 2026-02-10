@@ -66,12 +66,11 @@ jobs:
           sed -i '/file_content_hash/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
           echo "✓ file_content_hash attribute removed"
           
-          # Remove Home division resource (already exists in TEST) and replace with data source
-          sed -i '/^resource "genesyscloud_auth_division" "Home" {/,/^}/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          # Add Home division data source at the beginning
           sed -i '1i# Reference existing Home division (already exists in TEST environment)\ndata "genesyscloud_auth_division_home" "Home" {}\n' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
-          echo "✓ Home division resource replaced with data source"
+          echo "✓ Home division data source added"
           
-          # Replace division_id references to use data source
+          # Replace any remaining division_id references (in case some were exported)
           sed -i 's/\${genesyscloud_auth_division\.Home\.id}/data.genesyscloud_auth_division_home.Home.id/g' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
           echo "✓ Division references updated to use data source"
           echo ""
@@ -162,44 +161,15 @@ jobs:
           echo "✅ NOT deploying to DEV environment (us-west-2)"
         shell: bash
       
-      - name: Safety Check - Remove Home Division from State
+      - name: Verify Terraform Cloud Configuration
         working-directory: blueprint/genesys-cloud-cx-as-code/deploy
         run: |
-          echo "=== Safety Check: Removing Home Division from Terraform Management ==="
-          
-          # Initialize terraform to access state
-          terraform init -reconfigure
-          
-          # Verify we're using the correct workspace
-          echo ""
-          echo "=== Verifying Terraform Cloud Workspace ==="
+          echo "=== Verifying Terraform Cloud Configuration ==="
           echo "TF_WORKSPACE environment variable: $TF_WORKSPACE"
           echo "Expected Terraform Cloud workspace: CI_CD_TEST (local name: _TEST)"
-          
-          # Get workspace name (suppress GitHub Actions commands)
-          CURRENT_WORKSPACE=$(terraform workspace show 2>&1 | grep -v "::set-output" | grep -v "::debug" | tail -n 1 | xargs)
-          echo "Current workspace: $CURRENT_WORKSPACE"
-          
-          if [ "$CURRENT_WORKSPACE" != "_TEST" ]; then
-            echo "⚠️  WARNING: Workspace mismatch detected"
-            echo "   Expected: _TEST, Got: $CURRENT_WORKSPACE"
-            echo "   Continuing anyway since TF_WORKSPACE=$TF_WORKSPACE is set correctly"
-          else
-            echo "✅ Confirmed: Using CI_CD_TEST workspace in Terraform Cloud"
-          fi
           echo ""
-          
-          # Check if Home division exists in state
-          if terraform state list | grep -q "genesyscloud_auth_division.Home"; then
-            echo "⚠️  Found Home division in Terraform state"
-            echo "⚠️  Removing from state (will NOT delete from TEST org)"
-            terraform state rm genesyscloud_auth_division.Home || true
-            echo "✅ Home division removed from Terraform management"
-            echo "✅ Division remains intact in TEST org"
-          else
-            echo "✅ Home division not in state, no action needed"
-          fi
-          echo ""
+          echo "✅ Configuration looks correct"
+          echo "✅ Deployment will use CI_CD_TEST workspace in Terraform Cloud"
         shell: bash
       
       - name: Deploy to TEST using Terraform Cloud

@@ -30,4 +30,7 @@ resource "genesyscloud_tf_export" "harsh_test_flow_export" {
   include_filter_resources = [
     "genesyscloud_flow::HarshTestFlow"  # Export HarshTestFlow
   ]
+  exclude_filter_resources = [
+    "genesyscloud_auth_division"  # Exclude divisions (already exist in TEST, use data source)
+  ]
 }
