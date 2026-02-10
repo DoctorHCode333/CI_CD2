@@ -7,6 +7,12 @@ terraform {
       prefix = "CI_CD"
     }
   }
+
+  required_providers {
+    genesyscloud = {
+      source = "mypurecloud/genesyscloud"
+    }
+  }
 }
 
 provider "genesyscloud" {
