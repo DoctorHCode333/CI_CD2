@@ -28,9 +28,6 @@ resource "genesyscloud_tf_export" "harsh_test_flow_export" {
   enable_dependency_resolution       = true  # Automatically export all dependencies
   use_legacy_architect_flow_exporter = false # Export flows in YAML format
   include_filter_resources = [
-    "genesyscloud_flow::HarshTestFlow"  # Export HarshTestFlow
-  ]
-  exclude_filter_resources = [
-    "genesyscloud_auth_division"  # Exclude divisions (already exist in TEST, use data source)
+    "genesyscloud_flow::HarshTestFlow"  # Export HarshTestFlow and its dependencies
   ]
 }

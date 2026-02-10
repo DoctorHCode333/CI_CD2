@@ -66,11 +66,12 @@ jobs:
           sed -i '/file_content_hash/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
           echo "✓ file_content_hash attribute removed"
           
-          # Add Home division data source at the beginning
+          # Remove Home division resource (already exists in TEST) and replace with data source
+          sed -i '/^resource "genesyscloud_auth_division" "Home" {/,/^}/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
           sed -i '1i# Reference existing Home division (already exists in TEST environment)\ndata "genesyscloud_auth_division_home" "Home" {}\n' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
-          echo "✓ Home division data source added"
+          echo "✓ Home division resource replaced with data source"
           
-          # Replace any remaining division_id references (in case some were exported)
+          # Replace division_id references to use data source
           sed -i 's/\${genesyscloud_auth_division\.Home\.id}/data.genesyscloud_auth_division_home.Home.id/g' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
           echo "✓ Division references updated to use data source"
           echo ""

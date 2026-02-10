@@ -108,12 +108,13 @@ try {
         $content = $content -replace '\s*file_content_hash\s*=\s*"[^"]*"\s*\n', "`n"
         Write-Host "  ✓ Removed file_content_hash attribute" -ForegroundColor Green
         
-        # Add Home division data source at the beginning
+        # Remove Home division resource (already exists in TEST) and replace with data source
+        $content = $content -replace '(?s)resource\s+"genesyscloud_auth_division"\s+"Home"\s*\{[^}]*\}\s*', ''
         $dataSource = "# Reference existing Home division (already exists in TEST environment)`ndata `"genesyscloud_auth_division_home`" `"Home`" {}`n`n"
         $content = $dataSource + $content
-        Write-Host "  ✓ Home division data source added" -ForegroundColor Green
+        Write-Host "  ✓ Home division resource replaced with data source" -ForegroundColor Green
         
-        # Replace any remaining division_id references (in case some were exported)
+        # Replace division_id references to use data source
         $content = $content -replace '\$\{genesyscloud_auth_division\.Home\.id\}', 'data.genesyscloud_auth_division_home.Home.id'
         Write-Host "  ✓ Division references updated to use data source" -ForegroundColor Green
         
