@@ -71,12 +71,13 @@ CI_CD2/
     │   └── testFlowHarsh.yaml            # Original flow (HarshTestFlow)
     │
     └── genesys-cloud-cx-as-code/
-        ├── main.tf                       # Backend config (TEST)
-        ├── genesyscloud.tf              # EXPORTED resources (auto-generated)
-        ├── architect_flows/              # EXPORTED flow YAMLs (auto-generated)
-        │   └── HarshTestFlow.yaml
+        ├── deploy/                       # Deployment directory (Terraform Cloud)
+        │   ├── main.tf                   # Backend config (TEST)
+        │   ├── genesyscloud.tf          # EXPORTED resources (auto-generated)
+        │   └── architect_flows/          # EXPORTED flow YAMLs (auto-generated)
+        │       └── HarshTestFlow.yaml
         │
-        └── export/
+        └── export/                      # Export configuration
             ├── main.tf                   # Export configuration (DEV)
             ├── list-flows.py            # List DEV flows utility
             └── test-export-local.ps1    # Local export test script
@@ -84,8 +85,8 @@ CI_CD2/
 
 ## 🔑 Key Files
 
-### `main.tf` - Backend Configuration Only
-**Location:** `blueprint/genesys-cloud-cx-as-code/main.tf`
+### `deploy/main.tf` - Backend Configuration Only
+**Location:** `blueprint/genesys-cloud-cx-as-code/deploy/main.tf`
 
 Contains **only** remote backend and provider configuration:
 ```terraform
@@ -104,7 +105,7 @@ provider "genesyscloud" {
 ```
 
 ### `genesyscloud.tf` - Exported Resources
-**Location:** `blueprint/genesys-cloud-cx-as-code/genesyscloud.tf`
+**Location:** `blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf`
 
 **⚠️ Auto-generated file - Do not manually edit!**
 
@@ -119,7 +120,7 @@ This file is created by the export process and contains:
 Configures what to export from DEV:
 ```terraform
 resource "genesyscloud_tf_export" "harsh_test_flow_export" {
-  directory = "../"  # Exports to parent directory
+  directory = "../deploy"  # Exports to deploy directory
   include_filter_resources = [
     "genesyscloud_flow::HarshTestFlow"
   ]
@@ -135,7 +136,7 @@ When the export runs:
 terraform init
 terraform apply -auto-approve
 
-# Creates in parent directory (blueprint/genesys-cloud-cx-as-code/):
+# Creates in deploy directory (blueprint/genesys-cloud-cx-as-code/deploy/):
 # - genesyscloud.tf (all flows and dependencies)
 # - architect_flows/HarshTestFlow.yaml
 # - terraform.tfvars (optional)
@@ -144,7 +145,7 @@ terraform apply -auto-approve
 ### Deploy Process
 When the deploy runs:
 ```bash
-# In blueprint/genesys-cloud-cx-as-code/ directory
+# In blueprint/genesys-cloud-cx-as-code/deploy/ directory
 terraform init    # Connects to Terraform Cloud workspace CI_CD_TEST
 terraform apply --auto-approve
 
@@ -168,15 +169,15 @@ terraform apply --auto-approve
 5. Run Terraform export (via `genesys-cloud-export-queues` action)
    - Connects to DEV org
    - Exports HarshTestFlow with all dependencies
-   - Creates `genesyscloud.tf` in `blueprint/genesys-cloud-cx-as-code/`
+   - Creates `genesyscloud.tf` in `blueprint/genesys-cloud-cx-as-code/deploy/`
    - Creates YAML files in `architect_flows/`
 6. Verify exported files
 7. Commit and push to GitHub
 
 **Output Files:**
-- `blueprint/genesys-cloud-cx-as-code/genesyscloud.tf`
-- `blueprint/genesys-cloud-cx-as-code/architect_flows/*.yaml`
-- `blueprint/genesys-cloud-cx-as-code/terraform.tfvars` (if exists)
+- `blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf`
+- `blueprint/genesys-cloud-cx-as-code/deploy/architect_flows/*.yaml`
+- `blueprint/genesys-cloud-cx-as-code/deploy/terraform.tfvars` (if exists)
 
 ### Job 2: deploy-to-test
 
@@ -194,9 +195,9 @@ terraform apply --auto-approve
 6. Generate deployment summary
 
 **Terraform Files Used:**
-- `main.tf` - Backend and provider configuration
-- `genesyscloud.tf` - Resources to create/update
-- `architect_flows/*.yaml` - Flow definitions
+- `deploy/main.tf` - Backend and provider configuration
+- `deploy/genesyscloud.tf` - Resources to create/update
+- `deploy/architect_flows/*.yaml` - Flow definitions
 
 ## 🛠️ Local Testing
 
@@ -220,8 +221,8 @@ terraform init
 terraform apply -auto-approve
 
 # Verify results
-ls -la ../genesyscloud.tf
-ls -la ../architect_flows/
+ls -la ../deploy/genesyscloud.tf
+ls -la ../deploy/architect_flows/
 ```
 
 ### Test Deployment to TEST
@@ -237,7 +238,7 @@ $env:GENESYSCLOUD_API_REGION = "https://api.mypurecloud.com"
 terraform login
 
 # Navigate to deployment directory
-cd blueprint/genesys-cloud-cx-as-code
+cd blueprint/genesys-cloud-cx-as-code/deploy
 
 # Deploy
 terraform init
@@ -309,8 +310,8 @@ python list-flows.py
 ```
 Export Phase (DEV → GitHub):
   blueprint/genesys-cloud-cx-as-code/export/main.tf
-    ↓ (terraform export with directory="../")
-  blueprint/genesys-cloud-cx-as-code/
+    ↓ (terraform export with directory="../deploy")
+  blueprint/genesys-cloud-cx-as-code/deploy/
     ├── genesyscloud.tf ✅ (created)
     ├── architect_flows/
     │   └── HarshTestFlow.yaml ✅ (created)
@@ -318,7 +319,7 @@ Export Phase (DEV → GitHub):
     ↓ (commit & push to GitHub)
 
 Deploy Phase (GitHub → TEST):
-  blueprint/genesys-cloud-cx-as-code/
+  blueprint/genesys-cloud-cx-as-code/deploy/
     ├── main.tf (backend config only)
     ├── genesyscloud.tf (all resources)
     └── architect_flows/*.yaml
@@ -332,12 +333,12 @@ Deploy Phase (GitHub → TEST):
    - Installs PureCloudPlatformClientV2
    - Downloads and configures Archy
    
-2. **genesys-cloud-export-queues** - Export from DEV
+2. **genesys-cloud-export-flows** - Export from DEV
    - Runs Terraform export locally
-   - Creates genesyscloud.tf and YAML files
+   - Creates genesyscloud.tf and YAML files in deploy/ directory
    
 3. **genesys-cloud-apply-terraform** - Deploy to TEST
-   - Changes to blueprint/genesys-cloud-cx-as-code
+   - Changes to blueprint/genesys-cloud-cx-as-code/deploy
    - Runs terraform init and apply
    - Uses Terraform Cloud remote backend
 
@@ -373,9 +374,9 @@ All sensitive credentials are stored as GitHub Secrets:
 
 1. **genesyscloud.tf is auto-generated** - Don't edit it manually! It's regenerated on each export.
 
-2. **main.tf only has backend config** - All resource definitions come from genesyscloud.tf
+2. **main.tf only has backend config** - Located in deploy/ directory, all resource definitions come from genesyscloud.tf
 
-3. **Exports go to parent directory** - The export creates files in `blueprint/genesys-cloud-cx-as-code/`, not in a subdirectory
+3. **Exports go to deploy directory** - The export creates files in `blueprint/genesys-cloud-cx-as-code/deploy/`
 
 4. **Workspace name is CI_CD_TEST** - Ensure this matches your Terraform Cloud workspace
 

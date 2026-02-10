@@ -64,10 +64,14 @@ try {
     Write-Host "Press Enter to continue with export..." -ForegroundColor Yellow
     Read-Host
     
-    # Step 2: Clean previous export
-    if (Test-Path "exported_resources") {
-        Write-Host "Step 2: Cleaning previous export..." -ForegroundColor Cyan
-        Remove-Item -Recurse -Force exported_resources
+    # Step 2: Clean previous export in deploy directory
+    $deployDir = Join-Path $exportDir "..\deploy"
+    if (Test-Path "$deployDir\genesyscloud.tf") {
+        Write-Host "Step 2: Cleaning previous export in deploy directory..." -ForegroundColor Cyan
+        Remove-Item "$deployDir\genesyscloud.tf" -Force -ErrorAction SilentlyContinue
+    }
+    if (Test-Path "$deployDir\architect_flows") {
+        Remove-Item -Recurse -Force "$deployDir\architect_flows" -ErrorAction SilentlyContinue
     }
     
     # Step 3: Initialize and run Terraform export
@@ -80,7 +84,7 @@ try {
     }
     
     Write-Host ""
-    Write-Host "Step 4: Running Terraform export..." -ForegroundColor Cyan
+    Write-Host "Step 4: Running Terraform export (exports to ../deploy directory)..." -ForegroundColor Cyan
     terraform apply -auto-approve
     
     if ($LASTEXITCODE -ne 0) {
@@ -88,62 +92,79 @@ try {
         exit 1
     }
     
-    # Step 5: Copy exported YAML to architect flows directory
+    # Step 5: Verify exported files in deploy directory
     Write-Host ""
-    Write-Host "Step 5: Copying exported YAML to architect-flows directory..." -ForegroundColor Cyan
+    Write-Host "Step 5: Verifying exported resources in deploy directory..." -ForegroundColor Cyan
     
-    $yamlFiles = Get-ChildItem -Recurse exported_resources -Include *.yaml, *.yml -ErrorAction SilentlyContinue
+    if (Test-Path "$deployDir\genesyscloud.tf") {
+        Write-Host "  ✓ genesyscloud.tf exported successfully" -ForegroundColor Green
+        $tfFileSize = (Get-Item "$deployDir\genesyscloud.tf").Length
+        Write-Host "     Size: $tfFileSize bytes" -ForegroundColor White
+    } else {
+        Write-Host "  ✗ genesyscloud.tf not found in deploy directory!" -ForegroundColor Red
+        exit 1
+    }
     
-    if ($yamlFiles) {
-        $targetDir = Join-Path $exportDir "..\..\..\genesys-cloud-architect-flows"
-        
+    if (Test-Path "$deployDir\architect_flows") {
+        $yamlFiles = Get-ChildItem "$deployDir\architect_flows" -Include *.yaml, *.yml -File
+        Write-Host "  ✓ architect_flows/ directory created" -ForegroundColor Green
+        Write-Host "     Found $($yamlFiles.Count) YAML files" -ForegroundColor White
         foreach ($file in $yamlFiles) {
-            $targetPath = Join-Path $targetDir $file.Name
-            Copy-Item $file.FullName $targetPath -Force
-            Write-Host "  ✓ Copied $($file.Name) to architect-flows/" -ForegroundColor Green
+            Write-Host "     - $($file.Name)" -ForegroundColor White
         }
     } else {
-        Write-Host "  ✗ No YAML files found in export!" -ForegroundColor Red
-        exit 1
+        Write-Host "  ⚠ No architect_flows directory found" -ForegroundColor Yellow
     }
     
     # Step 6: Show what was exported
     Write-Host ""
     Write-Host "Step 6: Export Summary:" -ForegroundColor Cyan
-    Write-Host "Exported files:" -ForegroundColor Green
-    Get-ChildItem -Recurse exported_resources | Select-Object FullName | Format-Table -AutoSize
+    Write-Host "Deploy directory contents:" -ForegroundColor Green
+    Get-ChildItem $deployDir | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
     
     # Step 7: Git operations
     Write-Host ""
-    Write-Host "Step 7: Committing to GitHub..." -ForegroundColor Cyan
+    Write-Host "Step 7: Committing exported resources to GitHub..." -ForegroundColor Cyan
     
     Pop-Location
-    Push-Location (Join-Path $exportDir "..\..\..\..")
+    Push-Location (Join-Path $exportDir "..\..\..")  # Navigate to repository root
     
-    git add .
-    git commit -m "Export HarshTestFlow from DEV (usw2) - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    git add blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+    git add blueprint/genesys-cloud-cx-as-code/deploy/architect_flows/
+    git add blueprint/genesys-cloud-cx-as-code/deploy/terraform.tfvars -ErrorAction SilentlyContinue
     
-    Write-Host ""
-    Write-Host "Ready to push to GitHub. Continue? (Y/N)" -ForegroundColor Yellow
-    $pushResponse = Read-Host
-    
-    if ($pushResponse -eq "Y" -or $pushResponse -eq "y") {
-        git push origin main
+    $changes = git diff --staged --name-only
+    if ($changes) {
+        Write-Host "Files staged for commit:" -ForegroundColor Yellow
+        $changes | ForEach-Object { Write-Host "  - $_" -ForegroundColor White }
         
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host ""
-            Write-Host "=== SUCCESS ===" -ForegroundColor Green
-            Write-Host "✓ HarshTestFlow exported from DEV (usw2)" -ForegroundColor Green
-            Write-Host "✓ Changes pushed to GitHub" -ForegroundColor Green
-            Write-Host "✓ Ready for TEST environment deployment" -ForegroundColor Green
-            Write-Host ""
-            Write-Host "Next step: Deploy to TEST environment (use1) via Terraform Cloud" -ForegroundColor Cyan
+        git commit -m "Export HarshTestFlow from DEV (usw2) - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+        
+        Write-Host ""
+        Write-Host "Ready to push to GitHub. Continue? (Y/N)" -ForegroundColor Yellow
+        $pushResponse = Read-Host
+        
+        if ($pushResponse -eq "Y" -or $pushResponse -eq "y") {
+            git push origin main
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host ""
+                Write-Host "=== SUCCESS ===" -ForegroundColor Green
+                Write-Host "✓ HarshTestFlow exported from DEV (usw2)" -ForegroundColor Green
+                Write-Host "✓ Resources exported to deploy/ directory" -ForegroundColor Green
+                Write-Host "✓ Changes pushed to GitHub" -ForegroundColor Green
+                Write-Host "✓ Ready for TEST environment deployment" -ForegroundColor Green
+                Write-Host ""
+                Write-Host "Next step: Deploy to TEST environment (use1) via Terraform Cloud" -ForegroundColor Cyan
+            } else {
+                Write-Host "ERROR: Git push failed!" -ForegroundColor Red
+                exit 1
+            }
         } else {
-            Write-Host "ERROR: Git push failed!" -ForegroundColor Red
-            exit 1
+            Write-Host "Push cancelled. Changes are committed locally." -ForegroundColor Yellow
         }
     } else {
-        Write-Host "Push cancelled. Changes are committed locally." -ForegroundColor Yellow
+        Write-Host "No changes to commit. Export matched existing files." -ForegroundColor Yellow
     }
     
 } catch {
@@ -152,3 +173,6 @@ try {
 } finally {
     Pop-Location
 }
+
+Write-Host ""
+Write-Host "=== Export Complete ===" -ForegroundColor Cyan

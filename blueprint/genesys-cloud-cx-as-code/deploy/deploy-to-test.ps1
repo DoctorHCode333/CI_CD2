@@ -53,7 +53,7 @@ Write-Host "✓ TEST Environment Configuration:" -ForegroundColor Green
 Write-Host "  OAuth Client ID: $($env:GENESYSCLOUD_OAUTHCLIENT_ID)" -ForegroundColor Green
 Write-Host "  API Region: $($env:GENESYSCLOUD_API_REGION)" -ForegroundColor Green
 Write-Host "  Region: $($env:GENESYSCLOUD_REGION)" -ForegroundColor Green
-Write-Host "  Terraform Workspace: CI_CD_TEST_use1" -ForegroundColor Green
+Write-Host "  Terraform Workspace: CI_CD_TEST" -ForegroundColor Green
 Write-Host ""
 
 # Navigate to main deployment directory
@@ -75,12 +75,12 @@ try {
     
     # Step 2: Select workspace
     Write-Host ""
-    Write-Host "Step 2: Selecting workspace CI_CD_TEST_use1..." -ForegroundColor Cyan
-    terraform workspace select CI_CD_TEST_use1
+    Write-Host "Step 2: Selecting workspace CI_CD_TEST..." -ForegroundColor Cyan
+    terraform workspace select CI_CD_TEST
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Workspace doesn't exist, creating it..." -ForegroundColor Yellow
-        terraform workspace new CI_CD_TEST_use1
+        terraform workspace new CI_CD_TEST
     }
     
     # Step 3: Validate configuration
@@ -121,7 +121,7 @@ try {
             Write-Host "✓ State stored in Terraform Cloud remote backend" -ForegroundColor Green
             Write-Host ""
             Write-Host "Verification:" -ForegroundColor Cyan
-            Write-Host "  1. Check Terraform Cloud workspace: CI_CD_TEST_use1" -ForegroundColor White
+            Write-Host "  1. Check Terraform Cloud workspace: CI_CD_TEST" -ForegroundColor White
             Write-Host "  2. Login to Genesys Cloud TEST org (use1)" -ForegroundColor White
             Write-Host "  3. Navigate to Architect > Flows" -ForegroundColor White
             Write-Host "  4. Verify HarshTestFlow exists and is configured correctly" -ForegroundColor White

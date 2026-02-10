@@ -18,10 +18,10 @@ provider "genesyscloud" {
 }
 
 # Export HarshTestFlow from DEV environment (usw2)
-# Exports to parent directory: blueprint/genesys-cloud-cx-as-code/
+# Exports to deploy directory: blueprint/genesys-cloud-cx-as-code/deploy/
 # This creates genesyscloud.tf with all flows and dependencies
 resource "genesyscloud_tf_export" "harsh_test_flow_export" {
-  directory                          = "../"  # Export to parent directory
+  directory                          = "../deploy"  # Export to deploy directory
   export_format                      = "hcl"
   log_permission_errors              = true
   include_state_file                 = false

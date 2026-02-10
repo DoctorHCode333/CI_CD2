@@ -4,11 +4,11 @@
 #
 # Pipeline Flow:
 #  1. export-flow-from-dev: Export HarshTestFlow from DEV (us-west-2)
-#     - Creates genesyscloud.tf with all flows and dependencies in blueprint/genesys-cloud-cx-as-code/
+#     - Creates genesyscloud.tf with all flows and dependencies in blueprint/genesys-cloud-cx-as-code/deploy/
 #     - Commits all exported resources to GitHub
 #  2. deploy-to-test: Deploy to TEST (us-east-1) using Terraform Cloud
-#     - Uses genesyscloud.tf (resources) + main.tf (backend config)
-#     - Deploys via genesys-cloud-apply-terraform action
+#     - Uses deploy/genesyscloud.tf (resources) + deploy/main.tf (backend config)
+#     - Deploys via genesys-cloud-apply-terraform action from deploy directory
 #
 # Environment configurations:
 #  DEV:  us-west-2 (usw2.pure.cloud)
@@ -24,8 +24,8 @@ jobs:
   #  job: export-flow-from-dev
   #
   #  This job exports HarshTestFlow from DEV environment (us-west-2).
-  #  Exports to blueprint/genesys-cloud-cx-as-code/genesyscloud.tf (flows and dependencies)
-  #  and blueprint/genesys-cloud-cx-as-code/architect_flows/ (YAML files)
+  #  Exports to blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf (flows and dependencies)
+  #  and blueprint/genesys-cloud-cx-as-code/deploy/architect_flows/ (YAML files)
   ###
   export-flow-from-dev:
     runs-on: ubuntu-latest
@@ -58,32 +58,32 @@ jobs:
         run: |
           echo "=== Verifying exported resources ==="
           echo "Exported Terraform file (genesyscloud.tf):"
-          ls -lh blueprint/genesys-cloud-cx-as-code/genesyscloud.tf || echo "genesyscloud.tf not found!"
+          ls -lh blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf || echo "genesyscloud.tf not found!"
           echo ""
           echo "Exported flow YAML files:"
-          ls -lh blueprint/genesys-cloud-cx-as-code/architect_flows/*.yaml || echo "No YAML files found"
+          ls -lh blueprint/genesys-cloud-cx-as-code/deploy/architect_flows/*.yaml || echo "No YAML files found"
           echo ""
-          echo "Contents of export directory:"
-          ls -la blueprint/genesys-cloud-cx-as-code/
+          echo "Contents of deploy directory:"
+          ls -la blueprint/genesys-cloud-cx-as-code/deploy/
         shell: bash
       
       - name: Commit all exported resources to GitHub
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add blueprint/genesys-cloud-cx-as-code/genesyscloud.tf
-          git add blueprint/genesys-cloud-cx-as-code/architect_flows/
-          git add blueprint/genesys-cloud-cx-as-code/terraform.tfvars || true
+          git add blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          git add blueprint/genesys-cloud-cx-as-code/deploy/architect_flows/
+          git add blueprint/genesys-cloud-cx-as-code/deploy/terraform.tfvars || true
           git diff --staged --quiet || git commit -m "Auto-export HarshTestFlow from DEV (usw2) [skip ci]"
-          git push origin main
+          git push origin main --force
         shell: bash
 
   ###
   #  job: deploy-to-test
   #
   #  This job deploys HarshTestFlow to TEST environment (us-east-1) via Terraform Cloud.
-  #  Uses genesyscloud.tf (exported flows/dependencies) + main.tf (backend configuration)
-  #  Deploys using the genesys-cloud-apply-terraform action
+  #  Uses deploy/genesyscloud.tf (exported flows/dependencies) + deploy/main.tf (backend configuration)
+  #  Deploys using the genesys-cloud-apply-terraform action from deploy directory
   ###
   deploy-to-test:
     runs-on: ubuntu-latest
@@ -109,13 +109,13 @@ jobs:
         run: |
           echo "=== Verifying resources for deployment ==="
           echo "main.tf (backend config):"
-          ls -lh blueprint/genesys-cloud-cx-as-code/main.tf
+          ls -lh blueprint/genesys-cloud-cx-as-code/deploy/main.tf
           echo ""
           echo "genesyscloud.tf (flows and dependencies):"
-          ls -lh blueprint/genesys-cloud-cx-as-code/genesyscloud.tf
+          ls -lh blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
           echo ""
           echo "Flow YAML files:"
-          ls -lh blueprint/genesys-cloud-cx-as-code/architect_flows/*.yaml || echo "No YAML files found"
+          ls -lh blueprint/genesys-cloud-cx-as-code/deploy/architect_flows/*.yaml || echo "No YAML files found"
         shell: bash
       
       - name: Deploy to TEST using Terraform Cloud
@@ -132,9 +132,9 @@ jobs:
           echo "**Terraform Workspace:** CI_CD_TEST" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Files Deployed:" >> $GITHUB_STEP_SUMMARY
-          echo "- main.tf (Terraform Cloud backend configuration)" >> $GITHUB_STEP_SUMMARY
-          echo "- genesyscloud.tf (Exported flows and dependencies)" >> $GITHUB_STEP_SUMMARY
-          echo "- architect_flows/*.yaml (Flow definitions)" >> $GITHUB_STEP_SUMMARY
+          echo "- deploy/main.tf (Terraform Cloud backend configuration)" >> $GITHUB_STEP_SUMMARY
+          echo "- deploy/genesyscloud.tf (Exported flows and dependencies)" >> $GITHUB_STEP_SUMMARY
+          echo "- deploy/architect_flows/*.yaml (Flow definitions)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Verification Steps:" >> $GITHUB_STEP_SUMMARY
           echo "1. Check Terraform Cloud workspace: CI_CD_TEST" >> $GITHUB_STEP_SUMMARY

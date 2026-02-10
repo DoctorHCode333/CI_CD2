@@ -13,7 +13,7 @@ runs:
   using: "composite"
   steps:
     - run: |
-        cd $GITHUB_WORKSPACE/blueprint/genesys-cloud-cx-as-code
+        cd $GITHUB_WORKSPACE/blueprint/genesys-cloud-cx-as-code/deploy
         terraform init 
         terraform apply --auto-approve
         cd $GITHUB_WORKSPACE
