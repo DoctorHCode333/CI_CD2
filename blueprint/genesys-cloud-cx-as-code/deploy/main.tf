@@ -7,9 +7,8 @@
 
 terraform {
   required_providers {
-    genesyscloud = {
-      source  = "registry.terraform.io/mypurecloud/genesyscloud"
-      version = "1.75.1"
+   genesyscloud = {
+      source = "mypurecloud/genesyscloud"
     }
   }
   
