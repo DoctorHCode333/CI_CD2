@@ -118,7 +118,7 @@ jobs:
       GENESYSCLOUD_OAUTHCLIENT_SECRET: ${{ secrets.GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST }}
       GENESYSCLOUD_API_REGION: "https://api.mypurecloud.com"
       GENESYSCLOUD_REGION: "us-east-1"
-      TF_WORKSPACE: "CI_CD_TEST"
+      TF_WORKSPACE: "_TEST"  # With prefix "CI_CD" in main.tf, workspace CI_CD_TEST appears as "_TEST"
     steps:
       - uses: actions/checkout@v2
         with:
@@ -174,13 +174,13 @@ jobs:
           echo ""
           echo "=== Verifying Terraform Cloud Workspace ==="
           CURRENT_WORKSPACE=$(terraform workspace show)
-          echo "Current workspace: $CURRENT_WORKSPACE"
+          echo "Current workspace: $CURRENT_WORKSPACE (full name: CI_CD$CURRENT_WORKSPACE)"
           
-          if [ "$CURRENT_WORKSPACE" != "CI_CD_TEST" ]; then
-            echo "❌ ERROR: Wrong workspace! Expected CI_CD_TEST, got $CURRENT_WORKSPACE"
+          if [ "$CURRENT_WORKSPACE" != "_TEST" ]; then
+            echo "❌ ERROR: Wrong workspace! Expected _TEST (CI_CD_TEST), got $CURRENT_WORKSPACE"
             exit 1
           fi
-          echo "✅ Confirmed: Using CI_CD_TEST workspace (NOT CI_CD2)"
+          echo "✅ Confirmed: Using CI_CD_TEST workspace in Terraform Cloud"
           echo ""
           
           # Check if Home division exists in state

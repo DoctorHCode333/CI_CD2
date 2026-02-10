@@ -14,8 +14,9 @@ Write-Host "=== Deploy HarshTestFlow to TEST (use1) via Terraform Cloud ===" -Fo
 Write-Host ""
 
 # Set Terraform Cloud workspace to CI_CD_TEST
-$env:TF_WORKSPACE = "CI_CD_TEST"
-Write-Host "Setting Terraform Cloud workspace: $env:TF_WORKSPACE" -ForegroundColor Cyan
+# With prefix "CI_CD" in main.tf, workspace appears as "_TEST" locally
+$env:TF_WORKSPACE = "_TEST"
+Write-Host "Setting Terraform Cloud workspace: CI_CD_TEST (local name: _TEST)" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if OAuth credentials are set for TEST environment
@@ -95,14 +96,14 @@ try {
     Write-Host ""
     Write-Host "Step 2: Verifying Terraform Cloud Workspace..." -ForegroundColor Cyan
     $currentWorkspace = (terraform workspace show).Trim()
-    Write-Host "Current workspace: $currentWorkspace" -ForegroundColor White
+    Write-Host "Current workspace: $currentWorkspace (full name: CI_CD$currentWorkspace)" -ForegroundColor White
     
-    if ($currentWorkspace -ne "CI_CD_TEST") {
-        Write-Host "✗ ERROR: Wrong workspace! Expected CI_CD_TEST, got $currentWorkspace" -ForegroundColor Red
-        Write-Host "✗ Make sure TF_WORKSPACE environment variable is set correctly" -ForegroundColor Red
+    if ($currentWorkspace -ne "_TEST") {
+        Write-Host "✗ ERROR: Wrong workspace! Expected _TEST (CI_CD_TEST), got $currentWorkspace" -ForegroundColor Red
+        Write-Host "✗ Make sure TF_WORKSPACE environment variable is set to '_TEST'" -ForegroundColor Red
         exit 1
     }
-    Write-Host "✓ Confirmed: Using CI_CD_TEST workspace (NOT CI_CD2)" -ForegroundColor Green
+    Write-Host "✓ Confirmed: Using CI_CD_TEST workspace in Terraform Cloud" -ForegroundColor Green
     
     # Step 2.5: Safety Check - Remove Home division from state if it exists
     Write-Host ""

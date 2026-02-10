@@ -15,8 +15,10 @@ terraform {
   
   backend "remote" {
     organization = "TestCognizant"
-    # Workspace is selected via TF_WORKSPACE environment variable
-    # This allows switching between CI_CD2 (DEV) and CI_CD_TEST (TEST)
+    
+    workspaces {
+      prefix = "CI_CD"  # Matches both CI_CD2 (DEV) and CI_CD_TEST (TEST)
+    }
   }
 }
 
