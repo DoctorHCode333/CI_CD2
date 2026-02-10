@@ -16,7 +16,7 @@ terraform {
     organization = "TestCognizant"
 
     workspaces {
-      prefix = "CI_CD_TEST"  # TEST environment workspace
+      name = "CI_CD_TEST"  # TEST environment workspace
     }
   }
 }

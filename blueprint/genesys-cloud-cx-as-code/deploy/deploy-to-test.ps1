@@ -96,6 +96,18 @@ try {
         terraform workspace new CI_CD_TEST
     }
     
+    # Verify we're using the correct workspace
+    Write-Host ""
+    Write-Host "=== Verifying Terraform Cloud Workspace ===" -ForegroundColor Cyan
+    $currentWorkspace = (terraform workspace show).Trim()
+    Write-Host "Current workspace: $currentWorkspace" -ForegroundColor White
+    
+    if ($currentWorkspace -ne "CI_CD_TEST") {
+        Write-Host "✗ ERROR: Wrong workspace! Expected CI_CD_TEST, got $currentWorkspace" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "✓ Confirmed: Using CI_CD_TEST workspace (NOT CI_CD2)" -ForegroundColor Green
+    
     # Step 2.5: Safety Check - Remove Home division from state if it exists
     Write-Host ""
     Write-Host "Step 2.5: Safety Check - Removing Home Division from Terraform Management..." -ForegroundColor Cyan

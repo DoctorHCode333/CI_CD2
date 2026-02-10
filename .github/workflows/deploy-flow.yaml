@@ -170,6 +170,19 @@ jobs:
           # Initialize terraform to access state
           terraform init -reconfigure
           
+          # Verify we're using the correct workspace
+          echo ""
+          echo "=== Verifying Terraform Cloud Workspace ==="
+          CURRENT_WORKSPACE=$(terraform workspace show)
+          echo "Current workspace: $CURRENT_WORKSPACE"
+          
+          if [ "$CURRENT_WORKSPACE" != "CI_CD_TEST" ]; then
+            echo "❌ ERROR: Wrong workspace! Expected CI_CD_TEST, got $CURRENT_WORKSPACE"
+            exit 1
+          fi
+          echo "✅ Confirmed: Using CI_CD_TEST workspace (NOT CI_CD2)"
+          echo ""
+          
           # Check if Home division exists in state
           if terraform state list | grep -q "genesyscloud_auth_division.Home"; then
             echo "⚠️  Found Home division in Terraform state"
