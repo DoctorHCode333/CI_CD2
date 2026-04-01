@@ -371,41 +371,6 @@ jobs:
       - name: Deploy to TEST using Terraform Cloud
         uses: ./.github/actions/genesys-cloud-apply-terraform
       
-      - name: DEBUG - Deployment Failed Summary
-        if: failure()
-        run: |
-          echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Troubleshooting Checklist" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 1. GitHub Secrets (GENESYSCLOUD_OAUTHCLIENT_ID_TEST, GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST)" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Verify secrets exist in repository settings" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Check for leading/trailing whitespace when copying" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Ensure Client ID is in UUID format (36 characters)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 2. Genesys Cloud OAuth Client (TEST environment)" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Login to: https://login.mypurecloud.com (us-east-1)" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Navigate to: Admin > Integrations > OAuth" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Verify client exists and is **Enabled**" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Verify Grant Type: **Client Credentials**" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Check Authorized Scopes (needs appropriate permissions)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 3. Terraform Cloud Workspace" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Login to: https://app.terraform.io" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Check Organization: **TestCognizant**" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Check Workspace: **CI_CD_TEST**" >> $GITHUB_STEP_SUMMARY
-          echo "- [ ] Review Variables tab - remove any GENESYSCLOUD_* variables if set" >> $GITHUB_STEP_SUMMARY  
-          echo "- [ ] Verify workspace exists and is not locked" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 4. Common Fixes" >> $GITHUB_STEP_SUMMARY
-          echo "1. **Regenerate OAuth Secret**: In Genesys Cloud, regenerate the client secret" >> $GITHUB_STEP_SUMMARY
-          echo "2. **Update GitHub Secrets**: Paste new values without extra whitespace" >> $GITHUB_STEP_SUMMARY
-          echo "3. **Clear TF Cloud Variables**: Remove any GENESYSCLOUD_* env vars from TF Cloud workspace" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Debug Output" >> $GITHUB_STEP_SUMMARY
-          echo "Check the **DEBUG - Test OAuth Authentication Directly** step above for detailed error info." >> $GITHUB_STEP_SUMMARY
-        shell: bash
-      
       - name: Deployment Summary
         if: success()
         run: |
