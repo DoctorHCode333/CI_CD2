@@ -143,6 +143,201 @@ jobs:
           ls -lh blueprint/genesys-cloud-cx-as-code/deploy/architect_flows/*.yaml || echo "No YAML files found"
         shell: bash
       
+      #########################################################################
+      # DEBUG: Credential Validation Steps
+      # These steps help identify OAuth credential issues before Terraform runs
+      #########################################################################
+      
+      - name: DEBUG - Validate Credential Format
+        run: |
+          echo "=== DEBUG: Credential Format Validation ==="
+          echo ""
+          
+          # Check if secrets are set
+          if [ -z "$GENESYSCLOUD_OAUTHCLIENT_ID" ]; then
+            echo "❌ ERROR: GENESYSCLOUD_OAUTHCLIENT_ID is empty or not set!"
+            echo "   Check that secret 'GENESYSCLOUD_OAUTHCLIENT_ID_TEST' exists in GitHub"
+            exit 1
+          fi
+          
+          if [ -z "$GENESYSCLOUD_OAUTHCLIENT_SECRET" ]; then
+            echo "❌ ERROR: GENESYSCLOUD_OAUTHCLIENT_SECRET is empty or not set!"
+            echo "   Check that secret 'GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST' exists in GitHub"
+            exit 1
+          fi
+          
+          echo "✓ Both credentials are set (not empty)"
+          
+          # Check Client ID format (UUID format: 8-4-4-4-12)
+          CLIENT_ID_LENGTH=${#GENESYSCLOUD_OAUTHCLIENT_ID}
+          echo ""
+          echo "Client ID Analysis:"
+          echo "  - Length: $CLIENT_ID_LENGTH characters"
+          echo "  - First 4 chars: ${GENESYSCLOUD_OAUTHCLIENT_ID:0:4}..."
+          echo "  - Last 4 chars: ...${GENESYSCLOUD_OAUTHCLIENT_ID: -4}"
+          
+          # UUID should be 36 characters (32 hex + 4 dashes)
+          if [ "$CLIENT_ID_LENGTH" -ne 36 ]; then
+            echo "  ⚠️ WARNING: Client ID length is $CLIENT_ID_LENGTH, expected 36 (UUID format)"
+            echo "     This may indicate extra whitespace or incorrect format"
+          else
+            echo "  ✓ Client ID length matches UUID format (36 chars)"
+          fi
+          
+          # Check for common issues: leading/trailing whitespace
+          TRIMMED_ID=$(echo "$GENESYSCLOUD_OAUTHCLIENT_ID" | tr -d '[:space:]')
+          if [ "$TRIMMED_ID" != "$GENESYSCLOUD_OAUTHCLIENT_ID" ]; then
+            echo "  ❌ ERROR: Client ID contains whitespace characters!"
+            echo "     Original length: $CLIENT_ID_LENGTH"
+            echo "     Trimmed length: ${#TRIMMED_ID}"
+            echo "     Please update the GitHub secret to remove whitespace"
+          fi
+          
+          # Check Client Secret format
+          SECRET_LENGTH=${#GENESYSCLOUD_OAUTHCLIENT_SECRET}
+          echo ""
+          echo "Client Secret Analysis:"
+          echo "  - Length: $SECRET_LENGTH characters"
+          echo "  - First 4 chars: ${GENESYSCLOUD_OAUTHCLIENT_SECRET:0:4}..."
+          echo "  - Last 4 chars: ...${GENESYSCLOUD_OAUTHCLIENT_SECRET: -4}"
+          
+          # Check for common issues: leading/trailing whitespace
+          TRIMMED_SECRET=$(echo "$GENESYSCLOUD_OAUTHCLIENT_SECRET" | tr -d '[:space:]')
+          if [ "$TRIMMED_SECRET" != "$GENESYSCLOUD_OAUTHCLIENT_SECRET" ]; then
+            echo "  ❌ ERROR: Client Secret contains whitespace characters!"
+            echo "     Original length: $SECRET_LENGTH"
+            echo "     Trimmed length: ${#TRIMMED_SECRET}"
+            echo "     Please update the GitHub secret to remove whitespace"
+          else
+            echo "  ✓ Client Secret has no extra whitespace"
+          fi
+          
+          echo ""
+          echo "=== Environment Variables Check ==="
+          echo "GENESYSCLOUD_REGION: $GENESYSCLOUD_REGION"
+          echo "GENESYSCLOUD_API_REGION: $GENESYSCLOUD_API_REGION"
+          echo "TF_WORKSPACE: $TF_WORKSPACE"
+        shell: bash
+      
+      - name: DEBUG - Test OAuth Authentication Directly
+        run: |
+          echo "=== DEBUG: Testing OAuth Authentication with Genesys Cloud API ==="
+          echo ""
+          echo "Target: $GENESYSCLOUD_API_REGION (TEST environment)"
+          echo ""
+          
+          # Build the login URL
+          LOGIN_URL="${GENESYSCLOUD_API_REGION/api/login}"
+          echo "Login URL: $LOGIN_URL/oauth/token"
+          echo ""
+          
+          # Attempt OAuth token request
+          echo "Attempting OAuth client credentials authentication..."
+          echo ""
+          
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "$LOGIN_URL/oauth/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials" \
+            -u "$GENESYSCLOUD_OAUTHCLIENT_ID:$GENESYSCLOUD_OAUTHCLIENT_SECRET" \
+            2>&1)
+          
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | head -n -1)
+          HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -n 1)
+          
+          echo "HTTP Response Code: $HTTP_CODE"
+          echo ""
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ SUCCESS: OAuth authentication successful!"
+            echo "   Credentials are valid for TEST environment"
+            # Don't print the token, just confirm it was received
+            if echo "$HTTP_BODY" | grep -q "access_token"; then
+              echo "   Access token received successfully"
+            fi
+          else
+            echo "❌ FAILED: OAuth authentication failed!"
+            echo ""
+            echo "Response body:"
+            echo "$HTTP_BODY" | jq . 2>/dev/null || echo "$HTTP_BODY"
+            echo ""
+            echo "=== Diagnostic Information ==="
+            echo ""
+            
+            if [ "$HTTP_CODE" = "400" ]; then
+              echo "HTTP 400 - Bad Request / Invalid Client"
+              echo ""
+              echo "Possible causes:"
+              echo "  1. Client ID is incorrect or doesn't exist in TEST org"
+              echo "  2. Client Secret is incorrect"
+              echo "  3. OAuth client is disabled in Genesys Cloud"
+              echo "  4. OAuth client was created in different region"
+              echo "  5. Credentials have extra whitespace or special characters"
+              echo ""
+              echo "Recommended actions:"
+              echo "  1. Log into Genesys Cloud TEST (us-east-1 / mypurecloud.com)"
+              echo "  2. Go to Admin > Integrations > OAuth"
+              echo "  3. Verify the OAuth client exists and is enabled"
+              echo "  4. Regenerate the client secret if needed"
+              echo "  5. Update GitHub secrets with correct values (no extra spaces)"
+            elif [ "$HTTP_CODE" = "401" ]; then
+              echo "HTTP 401 - Unauthorized"
+              echo "The client secret appears to be incorrect"
+            elif [ "$HTTP_CODE" = "403" ]; then
+              echo "HTTP 403 - Forbidden"
+              echo "The OAuth client may not have the required permissions"
+            else
+              echo "Unexpected HTTP code: $HTTP_CODE"
+            fi
+            
+            echo ""
+            echo "=== Quick Verification Steps ==="
+            echo "1. GitHub Secret Name: GENESYSCLOUD_OAUTHCLIENT_ID_TEST"
+            echo "   - Should contain the Client ID (UUID format)"
+            echo ""
+            echo "2. GitHub Secret Name: GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST"  
+            echo "   - Should contain the Client Secret"
+            echo ""
+            echo "3. Verify the OAuth client in Genesys Cloud:"
+            echo "   - Region: us-east-1 (mypurecloud.com)"
+            echo "   - Grant Type: Client Credentials"
+            echo "   - Status: Enabled"
+            echo ""
+            # Don't exit here - let it continue to Terraform for full error details
+          fi
+        shell: bash
+      
+      - name: DEBUG - Check Terraform Cloud Workspace Variables
+        run: |
+          echo "=== DEBUG: Terraform Cloud Configuration Check ==="
+          echo ""
+          echo "⚠️ IMPORTANT: Terraform Cloud workspace variables can OVERRIDE GitHub secrets!"
+          echo ""
+          echo "Current GitHub Actions environment:"
+          echo "  GENESYSCLOUD_OAUTHCLIENT_ID: (set from GENESYSCLOUD_OAUTHCLIENT_ID_TEST secret)"
+          echo "  GENESYSCLOUD_OAUTHCLIENT_SECRET: (set from GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST secret)"
+          echo "  GENESYSCLOUD_REGION: $GENESYSCLOUD_REGION"
+          echo "  GENESYSCLOUD_API_REGION: $GENESYSCLOUD_API_REGION"
+          echo ""
+          echo "Terraform Cloud workspace: CI_CD_TEST"
+          echo ""
+          echo "Please check Terraform Cloud (app.terraform.io) for:"
+          echo "  1. Organization: TestCognizant"
+          echo "  2. Workspace: CI_CD_TEST"
+          echo "  3. Settings > Variables"
+          echo ""
+          echo "If ANY of these variables are set in Terraform Cloud workspace:"
+          echo "  - GENESYSCLOUD_OAUTHCLIENT_ID"
+          echo "  - GENESYSCLOUD_OAUTHCLIENT_SECRET"
+          echo "  - GENESYSCLOUD_REGION"
+          echo "  - GENESYSCLOUD_API_REGION"
+          echo ""
+          echo "They will OVERRIDE the values from GitHub secrets!"
+          echo ""
+          echo "To fix: Either update Terraform Cloud workspace variables,"
+          echo "        or remove them to use GitHub secrets instead."
+        shell: bash
+      
       - name: Confirm TEST Region Configuration
         run: |
           echo "=== Confirming TEST Environment Region ==="
@@ -175,6 +370,41 @@ jobs:
       
       - name: Deploy to TEST using Terraform Cloud
         uses: ./.github/actions/genesys-cloud-apply-terraform
+      
+      - name: DEBUG - Deployment Failed Summary
+        if: failure()
+        run: |
+          echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Troubleshooting Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 1. GitHub Secrets (GENESYSCLOUD_OAUTHCLIENT_ID_TEST, GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST)" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify secrets exist in repository settings" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check for leading/trailing whitespace when copying" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Ensure Client ID is in UUID format (36 characters)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 2. Genesys Cloud OAuth Client (TEST environment)" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Login to: https://login.mypurecloud.com (us-east-1)" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Navigate to: Admin > Integrations > OAuth" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify client exists and is **Enabled**" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify Grant Type: **Client Credentials**" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check Authorized Scopes (needs appropriate permissions)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 3. Terraform Cloud Workspace" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Login to: https://app.terraform.io" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check Organization: **TestCognizant**" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check Workspace: **CI_CD_TEST**" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Review Variables tab - remove any GENESYSCLOUD_* variables if set" >> $GITHUB_STEP_SUMMARY  
+          echo "- [ ] Verify workspace exists and is not locked" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 4. Common Fixes" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Regenerate OAuth Secret**: In Genesys Cloud, regenerate the client secret" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Update GitHub Secrets**: Paste new values without extra whitespace" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Clear TF Cloud Variables**: Remove any GENESYSCLOUD_* env vars from TF Cloud workspace" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Debug Output" >> $GITHUB_STEP_SUMMARY
+          echo "Check the **DEBUG - Test OAuth Authentication Directly** step above for detailed error info." >> $GITHUB_STEP_SUMMARY
+        shell: bash
       
       - name: Deployment Summary
         if: success()

@@ -14,7 +14,27 @@ runs:
   steps:
     - run: |
         cd $GITHUB_WORKSPACE/blueprint/genesys-cloud-cx-as-code/deploy
-        terraform init 
+        
+        echo "=== Terraform Deployment Debug Info ==="
+        echo "Working directory: $(pwd)"
+        echo ""
+        echo "Environment variables check:"
+        echo "  GENESYSCLOUD_REGION: ${GENESYSCLOUD_REGION:-NOT SET}"
+        echo "  GENESYSCLOUD_API_REGION: ${GENESYSCLOUD_API_REGION:-NOT SET}"
+        echo "  TF_WORKSPACE: ${TF_WORKSPACE:-NOT SET}"
+        echo "  GENESYSCLOUD_OAUTHCLIENT_ID length: ${#GENESYSCLOUD_OAUTHCLIENT_ID} chars"
+        echo "  GENESYSCLOUD_OAUTHCLIENT_SECRET length: ${#GENESYSCLOUD_OAUTHCLIENT_SECRET} chars"
+        echo ""
+        echo "Terraform files in deploy directory:"
+        ls -la *.tf 2>/dev/null || echo "No .tf files found!"
+        echo ""
+        
+        echo "=== Running terraform init ==="
+        terraform init
+        
+        echo ""
+        echo "=== Running terraform apply ==="
         terraform apply --auto-approve
+        
         cd $GITHUB_WORKSPACE
       shell: bash
