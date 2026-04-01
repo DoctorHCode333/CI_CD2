@@ -9,16 +9,89 @@ runs:
   steps:
     - run: |
         cd $GITHUB_WORKSPACE/blueprint/genesys-cloud-cx-as-code/export
+        
+        echo "=== Pre-Export Validation ==="
+        echo "Environment variables:"
+        echo "  GENESYSCLOUD_REGION: $GENESYSCLOUD_REGION"
+        echo "  GENESYSCLOUD_API_REGION: $GENESYSCLOUD_API_REGION"
+        echo "  Client ID length: ${#GENESYSCLOUD_OAUTHCLIENT_ID} chars"
+        echo ""
+        
+        # Test OAuth before Terraform runs
+        echo "=== Testing OAuth Authentication ==="
+        LOGIN_URL="${GENESYSCLOUD_API_REGION/api/login}"
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+          -X POST "$LOGIN_URL/oauth/token" \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "grant_type=client_credentials" \
+          -u "$GENESYSCLOUD_OAUTHCLIENT_ID:$GENESYSCLOUD_OAUTHCLIENT_SECRET")
+        
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "✓ OAuth authentication successful"
+        else
+          echo "❌ OAuth authentication failed (HTTP $HTTP_CODE)"
+          echo "  Check GENESYSCLOUD_OAUTHCLIENT_ID_DEV and GENESYSCLOUD_OAUTHCLIENT_SECRET_DEV secrets"
+          exit 1
+        fi
+        echo ""
+        
         export TF_LOG=DEBUG
         export TF_LOG_PATH=./terraform-debug.log
+        
         echo "=== Starting Terraform Export with DEBUG logging ==="
-        terraform init
-        terraform apply -auto-approve
+        echo "Working directory: $(pwd)"
+        echo "Terraform files:"
+        ls -la *.tf
         echo ""
-        echo "=== Terraform Debug Log (last 100 lines) ==="
-        tail -100 terraform-debug.log || echo "No debug log found"
+        
+        echo "=== Terraform Init ==="
+        terraform init
+        
+        echo ""
+        echo "=== Terraform Plan (to see what will be exported) ==="
+        terraform plan -out=export.plan 2>&1 | tee terraform-plan.log || true
+        
+        echo ""
+        echo "=== Terraform Apply ==="
+        terraform apply -auto-approve 2>&1 | tee terraform-apply.log
+        APPLY_EXIT_CODE=$?
+        
+        echo ""
+        echo "=== Export Results ==="
+        if [ -f ../deploy/genesyscloud.tf ]; then
+          echo "✓ genesyscloud.tf created successfully"
+          echo "  Size: $(wc -c < ../deploy/genesyscloud.tf) bytes"
+          echo "  Lines: $(wc -l < ../deploy/genesyscloud.tf)"
+          echo ""
+          echo "First 50 lines of genesyscloud.tf:"
+          head -50 ../deploy/genesyscloud.tf
+        else
+          echo "❌ genesyscloud.tf NOT created!"
+          echo ""
+          echo "Checking for any exported files in deploy directory:"
+          ls -la ../deploy/ || echo "Deploy directory not found!"
+        fi
+        
+        echo ""
+        echo "Architect flow YAML files:"
+        ls -la ../deploy/architect_flows/*.yaml 2>/dev/null || echo "No YAML files exported"
+        
+        echo ""
+        echo "=== Terraform Debug Log (errors and warnings) ==="
+        grep -iE "(error|warn|failed|not found|HarshTestFlow)" terraform-debug.log 2>/dev/null | head -50 || echo "No relevant errors found in debug log"
+        
         echo ""
         echo "=== Checking provider version ==="
         terraform version
+        
+        if [ $APPLY_EXIT_CODE -ne 0 ]; then
+          echo ""
+          echo "❌ Terraform apply failed with exit code: $APPLY_EXIT_CODE"
+          echo ""
+          echo "=== Full Debug Log (last 200 lines) ==="
+          tail -200 terraform-debug.log
+          exit $APPLY_EXIT_CODE
+        fi
+        
         cd $GITHUB_WORKSPACE
       shell: bash

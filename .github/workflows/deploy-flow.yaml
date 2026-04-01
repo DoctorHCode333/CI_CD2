@@ -44,6 +44,83 @@ jobs:
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
       
+      - name: DEBUG - Validate DEV Credentials and Permissions
+        run: |
+          echo "=== DEV Environment Credential Validation ==="
+          echo ""
+          echo "Target: $GENESYSCLOUD_API_REGION (DEV environment)"
+          echo "Region: $GENESYSCLOUD_REGION"
+          echo ""
+          
+          # Check credential format
+          echo "Client ID Analysis:"
+          echo "  - Length: ${#GENESYSCLOUD_OAUTHCLIENT_ID} characters"
+          if [ "${#GENESYSCLOUD_OAUTHCLIENT_ID}" -ne 36 ]; then
+            echo "  ⚠️ WARNING: Client ID length is ${#GENESYSCLOUD_OAUTHCLIENT_ID}, expected 36 (UUID format)"
+          else
+            echo "  ✓ Client ID length matches UUID format"
+          fi
+          echo ""
+          
+          # Test OAuth and get token with scope info
+          LOGIN_URL="${GENESYSCLOUD_API_REGION/api/login}"
+          echo "Testing OAuth at: $LOGIN_URL/oauth/token"
+          
+          TOKEN_RESPONSE=$(curl -s \
+            -X POST "$LOGIN_URL/oauth/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials" \
+            -u "$GENESYSCLOUD_OAUTHCLIENT_ID:$GENESYSCLOUD_OAUTHCLIENT_SECRET")
+          
+          if echo "$TOKEN_RESPONSE" | grep -q "access_token"; then
+            echo "✓ OAuth authentication successful"
+            echo ""
+            
+            # Extract token for API calls
+            ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+            
+            # Check user/client info
+            echo "=== OAuth Client Info ==="
+            USER_INFO=$(curl -s \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              "$GENESYSCLOUD_API_REGION/api/v2/users/me")
+            
+            echo "Client Name: $(echo "$USER_INFO" | jq -r '.name // "N/A"')"
+            echo "Division: $(echo "$USER_INFO" | jq -r '.division.name // "N/A"')"
+            echo ""
+            
+            # List available flows to verify architect access
+            echo "=== Testing Architect API Access ==="
+            FLOWS_RESPONSE=$(curl -s \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              "$GENESYSCLOUD_API_REGION/api/v2/flows?pageSize=25&name=HarshTestFlow")
+            
+            TOTAL_FLOWS=$(echo "$FLOWS_RESPONSE" | jq -r '.total // 0')
+            echo "Search for 'HarshTestFlow': $TOTAL_FLOWS result(s)"
+            
+            if [ "$TOTAL_FLOWS" -gt 0 ]; then
+              echo ""
+              echo "✓ Found HarshTestFlow:"
+              echo "$FLOWS_RESPONSE" | jq -r '.entities[] | "  - Name: \(.name)\n    ID: \(.id)\n    Type: \(.type)\n    Division: \(.division.name // "N/A")"'
+            else
+              echo ""
+              echo "⚠️ HarshTestFlow not found via direct API search"
+              echo ""
+              echo "Listing all flows (first 10):"
+              ALL_FLOWS=$(curl -s \
+                -H "Authorization: Bearer $ACCESS_TOKEN" \
+                "$GENESYSCLOUD_API_REGION/api/v2/flows?pageSize=10")
+              echo "Total flows visible: $(echo "$ALL_FLOWS" | jq -r '.total // 0')"
+              echo "$ALL_FLOWS" | jq -r '.entities[]? | "  - \(.name) [\(.type)]"' | head -10
+            fi
+            
+          else
+            echo "❌ OAuth authentication failed"
+            echo "Response: $TOKEN_RESPONSE"
+            exit 1
+          fi
+        shell: bash
+      
       - name: List flows in DEV environment
         working-directory: blueprint/genesys-cloud-cx-as-code/export
         run: |
@@ -370,6 +447,41 @@ jobs:
       
       - name: Deploy to TEST using Terraform Cloud
         uses: ./.github/actions/genesys-cloud-apply-terraform
+      
+      - name: DEBUG - Deployment Failed Summary
+        if: failure()
+        run: |
+          echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Troubleshooting Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 1. GitHub Secrets (GENESYSCLOUD_OAUTHCLIENT_ID_TEST, GENESYSCLOUD_OAUTHCLIENT_SECRET_TEST)" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify secrets exist in repository settings" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check for leading/trailing whitespace when copying" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Ensure Client ID is in UUID format (36 characters)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 2. Genesys Cloud OAuth Client (TEST environment)" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Login to: https://login.mypurecloud.com (us-east-1)" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Navigate to: Admin > Integrations > OAuth" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify client exists and is **Enabled**" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify Grant Type: **Client Credentials**" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check Authorized Scopes (needs appropriate permissions)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 3. Terraform Cloud Workspace" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Login to: https://app.terraform.io" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check Organization: **TestCognizant**" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check Workspace: **CI_CD_TEST**" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Review Variables tab - remove any GENESYSCLOUD_* variables if set" >> $GITHUB_STEP_SUMMARY  
+          echo "- [ ] Verify workspace exists and is not locked" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 4. Common Fixes" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Regenerate OAuth Secret**: In Genesys Cloud, regenerate the client secret" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Update GitHub Secrets**: Paste new values without extra whitespace" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Clear TF Cloud Variables**: Remove any GENESYSCLOUD_* env vars from TF Cloud workspace" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Debug Output" >> $GITHUB_STEP_SUMMARY
+          echo "Check the **DEBUG - Test OAuth Authentication Directly** step above for detailed error info." >> $GITHUB_STEP_SUMMARY
+        shell: bash
       
       - name: Deployment Summary
         if: success()

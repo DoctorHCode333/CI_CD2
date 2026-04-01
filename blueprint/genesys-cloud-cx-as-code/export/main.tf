@@ -1,7 +1,8 @@
 terraform {
   required_providers {
     genesyscloud = {
-      source = "mypurecloud/genesyscloud"
+      source  = "mypurecloud/genesyscloud"
+      version = "1.75.1"  # Pin version for consistency
     }
   }
   # No remote backend - runs locally for export
@@ -17,6 +18,9 @@ provider "genesyscloud" {
   # GENESYSCLOUD_API_REGION=https://api.usw2.pure.cloud
 }
 
+# Get Home division for filtering (where HarshTestFlow resides)
+data "genesyscloud_auth_division_home" "home" {}
+
 # Export HarshTestFlow from DEV environment (usw2)
 # Exports to deploy directory: blueprint/genesys-cloud-cx-as-code/deploy/
 # This creates genesyscloud.tf with all flows and dependencies
@@ -27,6 +31,8 @@ resource "genesyscloud_tf_export" "harsh_test_flow_export" {
   include_state_file                 = false
   enable_dependency_resolution       = true  # Automatically export all dependencies
   use_legacy_architect_flow_exporter = false # Export flows in YAML format
+  
+  # Export HarshTestFlow - try with and without division filter
   include_filter_resources = [
     "genesyscloud_flow::HarshTestFlow"  # Export HarshTestFlow and its dependencies
   ]
