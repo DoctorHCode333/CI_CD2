@@ -145,7 +145,6 @@ jobs:
           echo ""
           
           # Remove terraform block with required_providers to avoid conflict with main.tf
-          # The terraform block in main.tf contains the remote backend configuration
           sed -i '/^terraform {/,/^}/d' $EXPORT_FILE
           echo "✓ Terraform block removed"
           
@@ -153,26 +152,30 @@ jobs:
           sed -i '/file_content_hash/d' $EXPORT_FILE
           echo "✓ file_content_hash attribute removed"
           
-          # Remove Home division resource (already exists in TEST) and replace with data source
+          # Remove Home division resource (already exists in TEST)
           sed -i '/^resource "genesyscloud_auth_division" "Home" {/,/^}/d' $EXPORT_FILE
+          echo "✓ Home division resource removed"
+          
+          # Add data source for Home division at the top of the file
           sed -i '1i# Reference existing Home division (already exists in TEST environment)\ndata "genesyscloud_auth_division_home" "Home" {}\n' $EXPORT_FILE
-          echo "✓ Home division resource replaced with data source"
+          echo "✓ Home division data source added"
           
-          # Replace division_id references to use data source
-          sed -i 's/\${genesyscloud_auth_division\.Home\.id}/data.genesyscloud_auth_division_home.Home.id/g' $EXPORT_FILE
-          echo "✓ Division references updated to use data source"
+          # Fix division_id references - replace ANY division_id value with proper reference syntax
+          # This handles both ${...} interpolation and literal strings
+          sed -i 's/division_id[[:space:]]*=[[:space:]]*"[^"]*"/division_id = data.genesyscloud_auth_division_home.Home.id/g' $EXPORT_FILE
+          sed -i 's/division_id[[:space:]]*=[[:space:]]*\${[^}]*}/division_id = data.genesyscloud_auth_division_home.Home.id/g' $EXPORT_FILE
+          echo "✓ Division references fixed to use Home division data source"
           
-          # Remove genesyscloud_integration resource block (use existing 'Genesys Cloud Data Actions' in TEST)
+          # Remove genesyscloud_integration resource block (use existing integration in TEST)
           sed -i '/^resource "genesyscloud_integration"/,/^}/d' $EXPORT_FILE
           echo "✓ genesyscloud_integration resource block removed"
           
-          # Add data source for existing 'Genesys Cloud Data Actions' integration in TEST
-          sed -i '1i# Reference existing integration (already exists in TEST environment)\ndata "genesyscloud_integration" "Genesys_Cloud_Data_Actions" {\n  name = "Genesys Cloud Data Actions"\n}\n' $EXPORT_FILE
-          echo "✓ Data source added for existing 'Genesys Cloud Data Actions' integration"
-          
-          # Replace integration_id reference to use the data source
-          sed -i 's/\${genesyscloud_integration\.[^}]*\.id}/data.genesyscloud_integration.Genesys_Cloud_Data_Actions.id/g' $EXPORT_FILE
-          echo "✓ integration_id updated to use existing integration data source"
+          # Fix integration_id - use the actual integration ID from TEST environment
+          # Integration: "Genesys Cloud Data Actions" ID: 3d1f36f3-1379-4fdc-9721-3540a48f9179
+          INTEGRATION_ID="3d1f36f3-1379-4fdc-9721-3540a48f9179"
+          sed -i "s/integration_id[[:space:]]*=[[:space:]]*\"[^\"]*\"/integration_id = \"$INTEGRATION_ID\"/g" $EXPORT_FILE
+          sed -i "s/integration_id[[:space:]]*=[[:space:]]*\\\${[^}]*}/integration_id = \"$INTEGRATION_ID\"/g" $EXPORT_FILE
+          echo "✓ integration_id set to existing 'Genesys Cloud Data Actions' ($INTEGRATION_ID)"
           
           # Update category in waitTime action to match existing integration name
           sed -i 's/category = "PureCloud_Data_Actions"/category = "Genesys Cloud Data Actions"/g' $EXPORT_FILE
@@ -192,8 +195,17 @@ jobs:
           grep -E '^data "' $EXPORT_FILE | sort | uniq -c || echo "No data sources found"
           echo ""
           
-          echo "First 30 lines of cleaned genesyscloud.tf:"
-          head -30 $EXPORT_FILE
+          # Validate: Check division_id and integration_id values
+          echo "=== Validating key attributes ==="
+          echo "division_id values:"
+          grep -E "division_id" $EXPORT_FILE || echo "  No division_id found"
+          echo ""
+          echo "integration_id values:"
+          grep -E "integration_id" $EXPORT_FILE || echo "  No integration_id found"
+          echo ""
+          
+          echo "First 40 lines of cleaned genesyscloud.tf:"
+          head -40 $EXPORT_FILE
         shell: bash
       
       - name: Verify exported resources
