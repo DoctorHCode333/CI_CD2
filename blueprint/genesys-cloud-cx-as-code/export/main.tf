@@ -24,6 +24,14 @@ data "genesyscloud_auth_division_home" "home" {}
 # Export HarshTestFlow from DEV environment (usw2)
 # Exports to deploy directory: blueprint/genesys-cloud-cx-as-code/deploy/
 # This creates genesyscloud.tf with all flows and dependencies
+#
+# Dependency chain we WANT:
+#   HarshTestFlow → queues (401K, ROTH, PremiumSupport) → (stop here)
+#   HarshTestFlow → integration_action (waitTime) → integration (PureCloud_Data_Actions)
+#
+# Dependencies we DON'T want (triggered by queue.groups):
+#   queues → groups → users → skills/languages
+#
 resource "genesyscloud_tf_export" "harsh_test_flow_export" {
   directory                          = "../deploy"  # Export to deploy directory
   export_format                      = "hcl"
@@ -32,8 +40,19 @@ resource "genesyscloud_tf_export" "harsh_test_flow_export" {
   enable_dependency_resolution       = true  # Automatically export all dependencies
   use_legacy_architect_flow_exporter = false # Export flows in YAML format
   
-  # Export HarshTestFlow - try with and without division filter
+  # Export HarshTestFlow and its direct dependencies
   include_filter_resources = [
     "genesyscloud_flow::HarshTestFlow"  # Export HarshTestFlow and its dependencies
+  ]
+  
+  # Exclude irrelevant transitive dependencies
+  # These are pulled because 401K queue has groups assigned, which have users
+  exclude_filter_resources = [
+    "genesyscloud_user",              # Users are org-specific, shouldn't be exported
+    "genesyscloud_group",             # Groups are org-specific, shouldn't be exported
+    "genesyscloud_routing_skill",     # Skills pulled from users
+    "genesyscloud_routing_language",  # Languages pulled from users
+    "genesyscloud_auth_division",     # Division already exists in target, use data source
+    "genesyscloud_integration",       # Use existing 'Genesys Cloud Data Actions' in TEST
   ]
 }

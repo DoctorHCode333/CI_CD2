@@ -134,26 +134,90 @@ jobs:
       - name: Clean up exported genesyscloud.tf
         run: |
           echo "=== Cleaning exported genesyscloud.tf ==="
+          EXPORT_FILE="blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf"
+          
+          if [ ! -f "$EXPORT_FILE" ]; then
+            echo "❌ ERROR: $EXPORT_FILE not found!"
+            exit 1
+          fi
+          
+          echo "File size before cleanup: $(wc -c < $EXPORT_FILE) bytes"
+          echo ""
+          
           # Remove terraform block with required_providers to avoid conflict with main.tf
           # The terraform block in main.tf contains the remote backend configuration
-          sed -i '/^terraform {/,/^}/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          sed -i '/^terraform {/,/^}/d' $EXPORT_FILE
           echo "✓ Terraform block removed"
           
           # Remove file_content_hash attribute (computed attribute, cannot be set manually)
-          sed -i '/file_content_hash/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          sed -i '/file_content_hash/d' $EXPORT_FILE
           echo "✓ file_content_hash attribute removed"
           
           # Remove Home division resource (already exists in TEST) and replace with data source
-          sed -i '/^resource "genesyscloud_auth_division" "Home" {/,/^}/d' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
-          sed -i '1i# Reference existing Home division (already exists in TEST environment)\ndata "genesyscloud_auth_division_home" "Home" {}\n' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          sed -i '/^resource "genesyscloud_auth_division" "Home" {/,/^}/d' $EXPORT_FILE
+          sed -i '1i# Reference existing Home division (already exists in TEST environment)\ndata "genesyscloud_auth_division_home" "Home" {}\n' $EXPORT_FILE
           echo "✓ Home division resource replaced with data source"
           
           # Replace division_id references to use data source
-          sed -i 's/\${genesyscloud_auth_division\.Home\.id}/data.genesyscloud_auth_division_home.Home.id/g' blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          sed -i 's/\${genesyscloud_auth_division\.Home\.id}/data.genesyscloud_auth_division_home.Home.id/g' $EXPORT_FILE
           echo "✓ Division references updated to use data source"
+          
+          # Remove groups attribute from queues (references excluded group resources)
+          # This handles single-line and multi-line groups = [...] attributes
+          sed -i '/^[[:space:]]*groups[[:space:]]*=/d' $EXPORT_FILE
+          echo "✓ Groups attribute removed from queues (references excluded resources)"
+          
+          # Remove member_ids attribute if still present (references excluded users)
+          sed -i '/^[[:space:]]*member_ids[[:space:]]*=/d' $EXPORT_FILE
+          echo "✓ Member_ids attribute cleaned up"
+          
+          # Remove owner_ids attribute if still present (references excluded users)  
+          sed -i '/^[[:space:]]*owner_ids[[:space:]]*=/d' $EXPORT_FILE
+          echo "✓ Owner_ids attribute cleaned up"
+          
+          # Remove any remaining references to excluded resources
+          # These would cause "reference to undeclared resource" errors
+          sed -i '/genesyscloud_user\./d' $EXPORT_FILE
+          sed -i '/genesyscloud_group\./d' $EXPORT_FILE
+          sed -i '/genesyscloud_routing_skill\./d' $EXPORT_FILE
+          echo "✓ References to excluded resources removed"
+          
+          # Remove PureCloud_Data_Actions integration resource (use existing 'Genesys Cloud Data Actions' in TEST)
+          # Find and remove the entire resource block
+          sed -i '/^resource "genesyscloud_integration" "PureCloud_Data_Actions" {/,/^}/d' $EXPORT_FILE
+          echo "✓ PureCloud_Data_Actions integration resource removed"
+          
+          # Add data source for existing 'Genesys Cloud Data Actions' integration in TEST
+          # This integration already exists in TEST environment
+          sed -i '1i# Reference existing integration (already exists in TEST environment)\ndata "genesyscloud_integration" "Genesys_Cloud_Data_Actions" {\n  name = "Genesys Cloud Data Actions"\n}\n' $EXPORT_FILE
+          echo "✓ Data source added for existing 'Genesys Cloud Data Actions' integration"
+          
+          # Replace integration_id reference in waitTime action to use the data source
+          # Old: integration_id = "\${genesyscloud_integration.PureCloud_Data_Actions.id}"
+          # New: integration_id = data.genesyscloud_integration.Genesys_Cloud_Data_Actions.id
+          sed -i 's/\${genesyscloud_integration\.PureCloud_Data_Actions\.id}/data.genesyscloud_integration.Genesys_Cloud_Data_Actions.id/g' $EXPORT_FILE
+          echo "✓ waitTime integration_id updated to use existing integration"
+          
+          # Also update category in waitTime action to match the integration name
+          sed -i 's/category = "PureCloud_Data_Actions"/category = "Genesys Cloud Data Actions"/g' $EXPORT_FILE
+          echo "✓ waitTime category updated to 'Genesys Cloud Data Actions'"
+          
+          # Clean up any empty lines left behind
+          sed -i '/^$/N;/^\n$/d' $EXPORT_FILE
+          
           echo ""
-          echo "First 20 lines of cleaned genesyscloud.tf:"
-          head -20 blueprint/genesys-cloud-cx-as-code/deploy/genesyscloud.tf
+          echo "File size after cleanup: $(wc -c < $EXPORT_FILE) bytes"
+          echo ""
+          
+          # Validate: List resources in cleaned file
+          echo "=== Resources in cleaned genesyscloud.tf ==="
+          grep -E '^resource "' $EXPORT_FILE | sort | uniq -c || echo "No resources found"
+          echo ""
+          grep -E '^data "' $EXPORT_FILE | sort | uniq -c || echo "No data sources found"
+          echo ""
+          
+          echo "First 30 lines of cleaned genesyscloud.tf:"
+          head -30 $EXPORT_FILE
         shell: bash
       
       - name: Verify exported resources
