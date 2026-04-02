@@ -162,45 +162,21 @@ jobs:
           sed -i 's/\${genesyscloud_auth_division\.Home\.id}/data.genesyscloud_auth_division_home.Home.id/g' $EXPORT_FILE
           echo "✓ Division references updated to use data source"
           
-          # Remove groups attribute from queues (references excluded group resources)
-          # This handles single-line and multi-line groups = [...] attributes
-          sed -i '/^[[:space:]]*groups[[:space:]]*=/d' $EXPORT_FILE
-          echo "✓ Groups attribute removed from queues (references excluded resources)"
-          
-          # Remove member_ids attribute if still present (references excluded users)
-          sed -i '/^[[:space:]]*member_ids[[:space:]]*=/d' $EXPORT_FILE
-          echo "✓ Member_ids attribute cleaned up"
-          
-          # Remove owner_ids attribute if still present (references excluded users)  
-          sed -i '/^[[:space:]]*owner_ids[[:space:]]*=/d' $EXPORT_FILE
-          echo "✓ Owner_ids attribute cleaned up"
-          
-          # Remove any remaining references to excluded resources
-          # These would cause "reference to undeclared resource" errors
-          sed -i '/genesyscloud_user\./d' $EXPORT_FILE
-          sed -i '/genesyscloud_group\./d' $EXPORT_FILE
-          sed -i '/genesyscloud_routing_skill\./d' $EXPORT_FILE
-          echo "✓ References to excluded resources removed"
-          
-          # Remove PureCloud_Data_Actions integration resource (use existing 'Genesys Cloud Data Actions' in TEST)
-          # Find and remove the entire resource block
-          sed -i '/^resource "genesyscloud_integration" "PureCloud_Data_Actions" {/,/^}/d' $EXPORT_FILE
-          echo "✓ PureCloud_Data_Actions integration resource removed"
+          # Remove genesyscloud_integration resource block (use existing 'Genesys Cloud Data Actions' in TEST)
+          sed -i '/^resource "genesyscloud_integration"/,/^}/d' $EXPORT_FILE
+          echo "✓ genesyscloud_integration resource block removed"
           
           # Add data source for existing 'Genesys Cloud Data Actions' integration in TEST
-          # This integration already exists in TEST environment
           sed -i '1i# Reference existing integration (already exists in TEST environment)\ndata "genesyscloud_integration" "Genesys_Cloud_Data_Actions" {\n  name = "Genesys Cloud Data Actions"\n}\n' $EXPORT_FILE
           echo "✓ Data source added for existing 'Genesys Cloud Data Actions' integration"
           
-          # Replace integration_id reference in waitTime action to use the data source
-          # Old: integration_id = "\${genesyscloud_integration.PureCloud_Data_Actions.id}"
-          # New: integration_id = data.genesyscloud_integration.Genesys_Cloud_Data_Actions.id
-          sed -i 's/\${genesyscloud_integration\.PureCloud_Data_Actions\.id}/data.genesyscloud_integration.Genesys_Cloud_Data_Actions.id/g' $EXPORT_FILE
-          echo "✓ waitTime integration_id updated to use existing integration"
+          # Replace integration_id reference to use the data source
+          sed -i 's/\${genesyscloud_integration\.[^}]*\.id}/data.genesyscloud_integration.Genesys_Cloud_Data_Actions.id/g' $EXPORT_FILE
+          echo "✓ integration_id updated to use existing integration data source"
           
-          # Also update category in waitTime action to match the integration name
+          # Update category in waitTime action to match existing integration name
           sed -i 's/category = "PureCloud_Data_Actions"/category = "Genesys Cloud Data Actions"/g' $EXPORT_FILE
-          echo "✓ waitTime category updated to 'Genesys Cloud Data Actions'"
+          echo "✓ category updated to 'Genesys Cloud Data Actions'"
           
           # Clean up any empty lines left behind
           sed -i '/^$/N;/^\n$/d' $EXPORT_FILE

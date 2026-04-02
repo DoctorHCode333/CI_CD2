@@ -47,12 +47,12 @@ resource "genesyscloud_tf_export" "harsh_test_flow_export" {
   
   # Exclude irrelevant transitive dependencies
   # These are pulled because 401K queue has groups assigned, which have users
-  exclude_filter_resources = [
-    "genesyscloud_user",              # Users are org-specific, shouldn't be exported
-    "genesyscloud_group",             # Groups are org-specific, shouldn't be exported
-    "genesyscloud_routing_skill",     # Skills pulled from users
-    "genesyscloud_routing_language",  # Languages pulled from users
-    "genesyscloud_auth_division",     # Division already exists in target, use data source
-    "genesyscloud_integration",       # Use existing 'Genesys Cloud Data Actions' in TEST
-  ]
+  # exclude_filter_resources = [
+  #   "genesyscloud_user",              # Users are org-specific, shouldn't be exported
+  #   "genesyscloud_group",             # Groups are org-specific, shouldn't be exported
+  #   "genesyscloud_routing_skill",     # Skills pulled from users
+  #   "genesyscloud_routing_language",  # Languages pulled from users
+  #   "genesyscloud_auth_division",     # Division already exists in target, use data source
+  #   "genesyscloud_integration",       # Use existing 'Genesys Cloud Data Actions' in TEST
+  # ]
 }
