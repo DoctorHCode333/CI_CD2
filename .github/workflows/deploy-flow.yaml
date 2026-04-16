@@ -208,6 +208,39 @@ jobs:
           head -40 $EXPORT_FILE
         shell: bash
       
+      - name: Clean up exported flow YAML files
+        run: |
+          echo "=== Cleaning exported flow YAML files ==="
+          YAML_DIR="blueprint/genesys-cloud-cx-as-code/deploy/architect_flows"
+          
+          if [ ! -d "$YAML_DIR" ]; then
+            echo "❌ ERROR: $YAML_DIR directory not found!"
+            exit 1
+          fi
+          
+          # Process each YAML file in the architect_flows directory
+          for YAML_FILE in "$YAML_DIR"/*.yaml; do
+            if [ -f "$YAML_FILE" ]; then
+              echo "Processing: $YAML_FILE"
+              
+              # Replace 'voice: Jill' with 'defaultVoice: true' under defaultEngine
+              # This changes the TTS voice from a specific voice to the default voice
+              sed -i 's/voice: Jill/defaultVoice: true/g' "$YAML_FILE"
+              echo "  ✓ Changed 'voice: Jill' to 'defaultVoice: true'"
+            fi
+          done
+          
+          echo ""
+          echo "=== Verifying voice configuration in YAML files ==="
+          for YAML_FILE in "$YAML_DIR"/*.yaml; do
+            if [ -f "$YAML_FILE" ]; then
+              echo "File: $YAML_FILE"
+              grep -A2 "defaultEngine:" "$YAML_FILE" || echo "  No defaultEngine found"
+              echo ""
+            fi
+          done
+        shell: bash
+      
       - name: Verify exported resources
         run: |
           echo "=== Verifying exported resources ==="
