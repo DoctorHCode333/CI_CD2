@@ -10,7 +10,7 @@ inboundCall:
         noValue: true
       textToSpeech:
         defaultEngine:
-          voice: Jill
+          defaultVoice: true
   initialGreeting:
     tts: Hello, Welcome to Cognizant Technology.
   variables:

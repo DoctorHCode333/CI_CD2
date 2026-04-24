@@ -2,13 +2,15 @@
 data "genesyscloud_auth_division_home" "Home" {}
 
 resource "genesyscloud_flow" "INBOUNDCALL_HarshTestFlow" {
+  name              = "HarshTestFlow"
   type              = "INBOUNDCALL"
   depends_on        = [genesyscloud_routing_queue.PremiumSupport, genesyscloud_integration_action.waitTime, genesyscloud_routing_queue.ROTH, genesyscloud_routing_queue._401K]
   filepath          = "architect_flows/HarshTestFlow-INBOUNDCALL-c973b27c-487e-4c58-beb1-b5315cb84bf9.yaml"
-  name              = "HarshTestFlow"
 }
 resource "genesyscloud_integration_action" "waitTime" {
-  category = "Genesys Cloud Data Actions"
+  integration_id = "3d1f36f3-1379-4fdc-9721-3540a48f9179"
+  secure         = false
+  category       = "PureCloud_Data_Actions"
   config_request {
     headers = {
       Content-Type = "application/x-www-form-urlencoded"
@@ -18,7 +20,13 @@ resource "genesyscloud_integration_action" "waitTime" {
     request_type         = "GET"
     request_url_template = "/api/v2/routing/queues/$${input.QUEUE_ID}/mediatypes/$${input.MEDIA_TYPE}/estimatedwaittime"
   }
-  contract_input = jsonencode({
+  config_response {
+    success_template = "{\n   \"estimated_wait_time\": $${estimated_wait_time}\n}"
+    translation_map = {
+      estimated_wait_time = "$.results[0].estimatedWaitTimeSeconds"
+    }
+  }
+  contract_input  = jsonencode({
 		"properties": {
 				"MEDIA_TYPE": {
 						"description": "The media type of the interaction: call, chat, callback, email, social media, video communication, or message.",
@@ -44,13 +52,6 @@ resource "genesyscloud_integration_action" "waitTime" {
 		],
 		"type": "object"
 	})
-  secure         = false
-  config_response {
-    success_template = "{\n   \"estimated_wait_time\": $${estimated_wait_time}\n}"
-    translation_map = {
-      estimated_wait_time = "$.results[0].estimatedWaitTimeSeconds"
-    }
-  }
   contract_output = jsonencode({
 		"properties": {
 				"estimated_wait_time": {
@@ -61,42 +62,25 @@ resource "genesyscloud_integration_action" "waitTime" {
 		},
 		"type": "object"
 	})
-  integration_id  = "3d1f36f3-1379-4fdc-9721-3540a48f9179"
   name            = "waitTime"
 }
 
 resource "genesyscloud_routing_queue" "PremiumSupport" {
-  scoring_method          = "TimestampAndPriority"
-  acw_wrapup_prompt       = "MANDATORY_TIMEOUT"
-  enable_transcription    = true
-  last_agent_routing_mode = "AnyAgent"
-  acw_timeout_ms          = 300000
-  enable_audio_monitoring = false
-  media_settings_message {
-    service_level_duration_ms = 20000
+  media_settings_callback {
+    auto_end_delay_seconds    = 300
     service_level_percentage  = 0.8
     alerting_timeout_sec      = 30
-    enable_auto_answer        = false
-    enable_inactivity_timeout = false
-  }
-  description              = "PremiumSupport questions and answers"
-  enable_manual_assignment = true
-  media_settings_callback {
     service_level_duration_ms = 20000
+    auto_dial_delay_seconds   = 300
+    enable_auto_answer        = false
     enable_auto_dial_and_end  = false
     mode                      = "AgentFirst"
-    alerting_timeout_sec      = 30
-    auto_end_delay_seconds    = 300
-    enable_auto_answer        = false
-    service_level_percentage  = 0.8
-    auto_dial_delay_seconds   = 300
   }
-  auto_answer_only = true
   media_settings_chat {
-    alerting_timeout_sec      = 30
-    enable_auto_answer        = false
     service_level_duration_ms = 20000
     service_level_percentage  = 0.8
+    alerting_timeout_sec      = 30
+    enable_auto_answer        = false
   }
   media_settings_email {
     alerting_timeout_sec      = 300
@@ -104,116 +88,132 @@ resource "genesyscloud_routing_queue" "PremiumSupport" {
     service_level_duration_ms = 86400000
     service_level_percentage  = 0.8
   }
-  division_id                      = data.genesyscloud_auth_division_home.Home.id
-  name                             = "PremiumSupport"
-  skill_evaluation_method          = "BEST"
-  suppress_in_queue_call_recording = true
+  description             = "PremiumSupport questions and answers"
+  auto_answer_only        = true
+  skill_evaluation_method = "BEST"
+  enable_transcription    = true
+  media_settings_message {
+    alerting_timeout_sec      = 30
+    enable_auto_answer        = false
+    enable_inactivity_timeout = false
+    service_level_duration_ms = 20000
+    service_level_percentage  = 0.8
+  }
+  enable_audio_monitoring  = false
+  name                     = "PremiumSupport"
+  enable_manual_assignment = true
+  acw_wrapup_prompt        = "MANDATORY_TIMEOUT"
+  division_id = data.genesyscloud_auth_division_home.Home.id
+  last_agent_routing_mode  = "AnyAgent"
   media_settings_call {
     alerting_timeout_sec      = 8
     enable_auto_answer        = false
     service_level_duration_ms = 20000
     service_level_percentage  = 0.8
   }
+  scoring_method                   = "TimestampAndPriority"
+  acw_timeout_ms                   = 300000
+  suppress_in_queue_call_recording = true
 }
 
 resource "genesyscloud_routing_queue" "ROTH" {
-  description              = "ROTH questions and answers"
+  acw_timeout_ms           = 300000
   enable_audio_monitoring  = false
-  acw_wrapup_prompt        = "MANDATORY_TIMEOUT"
+  skill_evaluation_method  = "BEST"
   auto_answer_only         = true
+  enable_transcription     = true
   enable_manual_assignment = true
+  last_agent_routing_mode  = "AnyAgent"
+  media_settings_callback {
+    enable_auto_answer        = false
+    enable_auto_dial_and_end  = false
+    alerting_timeout_sec      = 30
+    auto_end_delay_seconds    = 300
+    mode                      = "AgentFirst"
+    service_level_percentage  = 0.8
+    auto_dial_delay_seconds   = 300
+    service_level_duration_ms = 20000
+  }
+  acw_wrapup_prompt = "MANDATORY_TIMEOUT"
+  media_settings_email {
+    service_level_duration_ms = 86400000
+    service_level_percentage  = 0.8
+    alerting_timeout_sec      = 300
+    enable_auto_answer        = false
+  }
+  name                             = "ROTH"
+  scoring_method                   = "TimestampAndPriority"
+  description                      = "ROTH questions and answers"
+  suppress_in_queue_call_recording = true
+  division_id = data.genesyscloud_auth_division_home.Home.id
+  media_settings_call {
+    alerting_timeout_sec      = 8
+    enable_auto_answer        = false
+    service_level_duration_ms = 20000
+    service_level_percentage  = 0.8
+  }
   media_settings_chat {
     service_level_duration_ms = 20000
     service_level_percentage  = 0.8
     alerting_timeout_sec      = 30
     enable_auto_answer        = false
   }
-  enable_transcription    = true
-  last_agent_routing_mode = "AnyAgent"
-  scoring_method          = "TimestampAndPriority"
-  skill_evaluation_method = "BEST"
-  division_id             = data.genesyscloud_auth_division_home.Home.id
   media_settings_message {
+    alerting_timeout_sec      = 30
     enable_auto_answer        = false
     enable_inactivity_timeout = false
     service_level_duration_ms = 20000
     service_level_percentage  = 0.8
-    alerting_timeout_sec      = 30
   }
-  name           = "ROTH"
-  acw_timeout_ms = 300000
-  media_settings_email {
-    enable_auto_answer        = false
-    service_level_duration_ms = 86400000
-    service_level_percentage  = 0.8
-    alerting_timeout_sec      = 300
-  }
-  media_settings_call {
-    service_level_percentage  = 0.8
-    alerting_timeout_sec      = 8
-    enable_auto_answer        = false
-    service_level_duration_ms = 20000
-  }
-  media_settings_callback {
-    alerting_timeout_sec      = 30
-    service_level_duration_ms = 20000
-    enable_auto_dial_and_end  = false
-    service_level_percentage  = 0.8
-    auto_dial_delay_seconds   = 300
-    auto_end_delay_seconds    = 300
-    enable_auto_answer        = false
-    mode                      = "AgentFirst"
-  }
-  suppress_in_queue_call_recording = true
 }
 
 resource "genesyscloud_routing_queue" "_401K" {
-  division_id             = data.genesyscloud_auth_division_home.Home.id
-  last_agent_routing_mode = "AnyAgent"
-  media_settings_chat {
-    alerting_timeout_sec      = 30
-    enable_auto_answer        = false
-    service_level_duration_ms = 20000
-    service_level_percentage  = 0.8
-  }
+  suppress_in_queue_call_recording = true
   media_settings_email {
     service_level_percentage  = 0.8
     alerting_timeout_sec      = 300
     enable_auto_answer        = false
     service_level_duration_ms = 86400000
   }
-  skill_evaluation_method = "BEST"
-  description             = "401K questions and answers"
-  acw_timeout_ms          = 300000
-  acw_wrapup_prompt       = "MANDATORY_TIMEOUT"
-  media_settings_callback {
-    enable_auto_dial_and_end  = false
-    service_level_percentage  = 0.8
-    service_level_duration_ms = 20000
-    mode                      = "AgentFirst"
-    alerting_timeout_sec      = 30
-    auto_dial_delay_seconds   = 300
-    auto_end_delay_seconds    = 300
-    enable_auto_answer        = false
-  }
-  media_settings_message {
-    alerting_timeout_sec      = 30
-    enable_auto_answer        = false
-    enable_inactivity_timeout = false
-    service_level_duration_ms = 20000
-    service_level_percentage  = 0.8
-  }
+  scoring_method           = "TimestampAndPriority"
+  acw_wrapup_prompt        = "MANDATORY_TIMEOUT"
+  description              = "401K questions and answers"
   name                     = "401K"
   enable_manual_assignment = true
   enable_transcription     = true
-  media_settings_call {
-    alerting_timeout_sec      = 8
+  skill_evaluation_method  = "BEST"
+  acw_timeout_ms           = 300000
+  enable_audio_monitoring  = false
+  last_agent_routing_mode  = "AnyAgent"
+  media_settings_callback {
+    service_level_percentage  = 0.8
+    auto_end_delay_seconds    = 300
+    alerting_timeout_sec      = 30
+    enable_auto_dial_and_end  = false
+    service_level_duration_ms = 20000
+    mode                      = "AgentFirst"
+    auto_dial_delay_seconds   = 300
+    enable_auto_answer        = false
+  }
+  media_settings_chat {
+    alerting_timeout_sec      = 30
     enable_auto_answer        = false
     service_level_duration_ms = 20000
     service_level_percentage  = 0.8
   }
-  auto_answer_only                 = true
-  scoring_method                   = "TimestampAndPriority"
-  enable_audio_monitoring          = false
-  suppress_in_queue_call_recording = true
+  auto_answer_only = true
+  division_id = data.genesyscloud_auth_division_home.Home.id
+  media_settings_call {
+    service_level_percentage  = 0.8
+    alerting_timeout_sec      = 8
+    enable_auto_answer        = false
+    service_level_duration_ms = 20000
+  }
+  media_settings_message {
+    enable_inactivity_timeout = false
+    service_level_duration_ms = 20000
+    service_level_percentage  = 0.8
+    alerting_timeout_sec      = 30
+    enable_auto_answer        = false
+  }
 }
